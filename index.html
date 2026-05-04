@@ -4,946 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Flosswork - Aligner Classifier</title>
+
+<!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+
+<!-- Styles -->
+<link rel="stylesheet" href="styles.css">
+
+<!-- html2canvas for summary image export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<style>
-/* ─────────────────────────────────────────────
-   DESIGN TOKENS
-───────────────────────────────────────────── */
-:root {
-  /* Neutrals */
-  --bg:           #F5F4F1;
-  --surface:      #FFFFFF;
-  --surface2:     #F9F8F6;
-  --border:       #E8E6E0;
-  --border-light: #F0EEE9;
-
-  /* Text */
-  --text-primary:   #1A1916;
-  --text-secondary: #6B6860;
-  --text-tertiary:  #9E9C97;
-
-  /* Accent (default black) */
-  --accent: #1A1916;
-
-  /* Severity colours */
-  --mild:          #16A34A;
-  --mild-bg:       #F0FDF4;
-  --mild-light:    #DCFCE7;
-  --moderate:      #D97706;
-  --moderate-bg:   #FFFBEB;
-  --moderate-light:#FEF3C7;
-  --severe:        #DC2626;
-  --severe-bg:     #FEF2F2;
-  --severe-light:  #FFE4E4;
-
-  /* Plan brand colours */
-  --invis:    #005B99;
-  --invis-bg: #EFF6FF;
-  --luxe:     #92680A;
-  --luxe-bg:  #FEFCE8;
-  --luxe-border: #EFD080;
-
-  /* Layout */
-  --radius:    16px;
-  --radius-sm: 10px;
-  --shadow:    0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
-  --transition: 0.18s cubic-bezier(0.4,0,0.2,1);
-}
-
-/* ─────────────────────────────────────────────
-   RESET & BASE
-───────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
-
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
-  color: var(--text-primary);
-  min-height: 100vh;
-  padding-bottom: 110px;
-}
-
-/* ─────────────────────────────────────────────
-   SHARED UTILITIES
-───────────────────────────────────────────── */
-.section-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  margin-bottom: 9px;
-  padding-left: 1px;
-}
-
-.card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  padding: 18px;
-  margin-bottom: 11px;
-}
-
-/* ─────────────────────────────────────────────
-   HEADER
-───────────────────────────────────────────── */
-.header {
-  background: rgba(255,255,255,0.94);
-  border-bottom: 1px solid var(--border);
-  padding: 13px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  gap: 12px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  min-width: 0;
-  flex: 1;
-}
-
-/* Clinic logo — tap to upload */
-.clinic-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
-  position: relative;
-}
-.clinic-logo img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  display: none;
-  position: absolute;
-  inset: 0;
-}
-.clinic-logo-placeholder {
-  font-family: 'DM Serif Display', serif;
-  font-size: 17px;
-  color: #fff;
-  pointer-events: none;
-}
-/* Small + hint badge on logo */
-.clinic-logo-hint {
-  position: absolute;
-  bottom: -1px; right: -1px;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px;
-  color: var(--text-tertiary);
-  pointer-events: none;
-}
-#logo-upload { display: none; }
-
-/* Static clinic name & tagline */
-.clinic-name-block { display: flex; flex-direction: column; min-width: 0; }
-.clinic-name-static {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.clinic-tagline-static {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.btn-reset {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 13px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.btn-reset:hover  { background: var(--bg); color: var(--text-primary); }
-.btn-reset:active { transform: scale(0.97); }
-
-/* ─────────────────────────────────────────────
-   STICKY PROGRESS BAR
-───────────────────────────────────────────── */
-.progress-sticky {
-  position: sticky;
-  top: 66px;
-  z-index: 90;
-  background: rgba(245,244,241,0.96);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-light);
-  padding: 7px 18px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.prog-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--border);
-  flex-shrink: 0;
-  transition: background var(--transition);
-}
-.prog-dot.done { background: var(--accent); }
-.prog-label { font-size: 11px; color: var(--text-tertiary); margin-left: 4px; }
-
-/* ─────────────────────────────────────────────
-   MAIN LAYOUT
-───────────────────────────────────────────── */
-.main { max-width: 720px; margin: 0 auto; padding: 22px 15px 15px; }
-
-/* ─────────────────────────────────────────────
-   SCORE BANNER
-───────────────────────────────────────────── */
-.score-banner {
-  background: var(--accent);
-  border-radius: var(--radius);
-  padding: 15px 19px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 11px;
-  color: #fff;
-}
-.score-label-text { font-size: 11.5px; font-weight: 500; opacity: 0.6; margin-bottom: 2px; }
-.score-number {
-  font-family: 'DM Serif Display', serif;
-  font-size: 42px;
-  line-height: 1;
-  letter-spacing: -1px;
-}
-.score-right {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 7px;
-}
-.score-category {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 4px 11px;
-  border-radius: 20px;
-  background: rgba(255,255,255,0.15);
-  transition: all var(--transition);
-}
-.score-category.mild     { background: rgba(22,163,74,0.28);  color: #4ade80; }
-.score-category.moderate { background: rgba(217,119,6,0.28);  color: #fbbf24; }
-.score-category.severe   { background: rgba(220,38,38,0.28);  color: #f87171; }
-.score-breakdown { font-size: 10px; opacity: 0.45; }
-
-/* ─────────────────────────────────────────────
-   PATIENT INTAKE
-───────────────────────────────────────────── */
-.patient-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 11px;
-}
-@media (max-width: 480px) {
-  .patient-grid { grid-template-columns: 1fr 1fr; }
-  .patient-grid .span-full { grid-column: 1 / -1; }
-}
-
-.field-group { display: flex; flex-direction: column; gap: 5px; }
-.field-label  { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
-.field-input {
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 13px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
-  color: var(--text-primary);
-  outline: none;
-  -webkit-appearance: none;
-  width: 100%;
-  transition: border-color var(--transition), box-shadow var(--transition);
-}
-.field-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(26,25,22,0.07);
-}
-.field-input::placeholder { color: var(--text-tertiary); }
-select.field-input { cursor: pointer; }
-
-/* ─────────────────────────────────────────────
-   CLINICAL PARAMETER CARDS
-───────────────────────────────────────────── */
-.param-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 15px 17px;
-  margin-bottom: 8px;
-  transition: border-color var(--transition), box-shadow var(--transition);
-}
-.param-card.selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-.param-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 11px;
-}
-.param-name   { font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.1px; }
-.param-weight {
-  font-size: 10px; font-weight: 600;
-  color: var(--text-tertiary);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 2px 7px;
-}
-
-/* Segmented buttons (3-option selector) */
-.seg-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-
-.seg-btn {
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 9px;
-  padding: 10px 5px;
-  cursor: pointer;
-  text-align: center;
-  font-family: 'DM Sans', sans-serif;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  transition: all var(--transition);
-}
-.seg-btn:active { transform: scale(0.96); }
-.seg-btn.active { background: var(--accent); border-color: var(--accent); }
-
-.seg-value {
-  font-family: 'DM Serif Display', serif;
-  font-size: 16px; font-weight: 700;
-  line-height: 1; margin-bottom: 4px;
-  color: var(--text-tertiary);
-  transition: color var(--transition);
-}
-.seg-desc {
-  font-size: 10px; font-weight: 500;
-  line-height: 1.3;
-  color: var(--text-tertiary);
-  transition: color var(--transition);
-}
-.seg-btn.active .seg-value,
-.seg-btn.active .seg-desc { color: #fff; }
-
-/* ─────────────────────────────────────────────
-   PENALTY CHIPS
-───────────────────────────────────────────── */
-.penalty-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-}
-
-.penalty-chip,
-.aux-chip {
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 9px;
-  padding: 10px 9px;
-  cursor: pointer;
-  text-align: center;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  transition: all var(--transition);
-}
-.penalty-chip:active,
-.aux-chip:active { transform: scale(0.96); }
-
-.penalty-chip.active,
-.aux-chip.active {
-  background: var(--text-primary);
-  border-color: var(--text-primary);
-}
-
-.penalty-chip-label,
-.aux-chip-label {
-  font-size: 11px; font-weight: 500;
-  color: var(--text-secondary);
-  line-height: 1.3;
-  transition: color var(--transition);
-}
-.penalty-chip-val,
-.aux-chip-sub {
-  font-size: 10.5px;
-  color: var(--text-tertiary);
-  margin-top: 3px;
-  transition: color var(--transition);
-}
-.penalty-chip.active .penalty-chip-label,
-.penalty-chip.active .penalty-chip-val,
-.aux-chip.active .aux-chip-label,
-.aux-chip.active .aux-chip-sub { color: #fff; }
-
-/* Advanced auxiliaries uses same 2-col grid */
-.aux-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-
-/* ─────────────────────────────────────────────
-   CASE SEVERITY CARD
-───────────────────────────────────────────── */
-.severity-card {
-  border-radius: var(--radius);
-  border: 2px solid var(--border);
-  padding: 18px 19px;
-  margin-bottom: 11px;
-  background: var(--surface);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  transition: border-color 0.26s ease, background 0.26s ease;
-}
-.severity-card.mild     { border-color: var(--mild);     background: var(--mild-bg); }
-.severity-card.moderate { border-color: var(--moderate); background: var(--moderate-bg); }
-.severity-card.severe   { border-color: var(--severe);   background: var(--severe-bg); }
-
-.severity-tag {
-  display: inline-block;
-  font-size: 9.5px; font-weight: 700;
-  letter-spacing: 1.2px; text-transform: uppercase;
-  padding: 3px 10px; border-radius: 20px;
-  background: var(--border); color: var(--text-tertiary);
-  margin-bottom: 7px;
-  transition: background 0.26s ease, color 0.26s ease;
-}
-.severity-card.mild     .severity-tag { background: var(--mild-light);     color: var(--mild); }
-.severity-card.moderate .severity-tag { background: var(--moderate-light); color: var(--moderate); }
-.severity-card.severe   .severity-tag { background: var(--severe-light);   color: var(--severe); }
-
-.severity-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: 30px; letter-spacing: -0.5px;
-  color: var(--text-tertiary); line-height: 1;
-  transition: color 0.26s ease;
-}
-.severity-card.mild     .severity-title { color: var(--mild); }
-.severity-card.moderate .severity-title { color: var(--moderate); }
-.severity-card.severe   .severity-title { color: var(--severe); }
-
-.severity-desc {
-  font-size: 11.5px; color: var(--text-tertiary);
-  margin-top: 5px; line-height: 1.4;
-  transition: color 0.26s ease;
-}
-.severity-card.mild     .severity-desc { color: #4ade80; }
-.severity-card.moderate .severity-desc { color: #d97706; }
-.severity-card.severe   .severity-desc { color: #ef4444; }
-
-.sev-bubble {
-  flex-shrink: 0;
-  width: 60px; height: 60px; border-radius: 50%;
-  background: rgba(0,0,0,0.05);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  transition: background 0.26s ease;
-}
-.severity-card.mild     .sev-bubble { background: rgba(22,163,74,0.12); }
-.severity-card.moderate .sev-bubble { background: rgba(217,119,6,0.12); }
-.severity-card.severe   .sev-bubble { background: rgba(220,38,38,0.12); }
-
-.sev-score-num {
-  font-family: 'DM Serif Display', serif;
-  font-size: 22px; line-height: 1; letter-spacing: -0.5px;
-  color: var(--text-tertiary); transition: color 0.26s ease;
-}
-.severity-card.mild     .sev-score-num { color: var(--mild); }
-.severity-card.moderate .sev-score-num { color: var(--moderate); }
-.severity-card.severe   .sev-score-num { color: var(--severe); }
-
-.sev-score-lbl {
-  font-size: 8.5px; font-weight: 700;
-  letter-spacing: 0.5px; text-transform: uppercase;
-  color: var(--text-tertiary); margin-top: 2px;
-}
-
-/* ─────────────────────────────────────────────
-   TREATMENT OPTION CARDS
-───────────────────────────────────────────── */
-.tx-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 9px;
-  margin-bottom: 11px;
-}
-@media (max-width: 380px) { .tx-grid { grid-template-columns: 1fr; } }
-
-.tx-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 2px solid var(--border);
-  padding: 15px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  transition: all var(--transition);
-}
-.tx-card:active { transform: scale(0.975); }
-
-/* Selected state — default (budget/ace) */
-.tx-card.selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 4px 20px rgba(0,0,0,0.10);
-}
-/* Selected — Invisalign */
-.tx-card.invis.selected {
-  border-color: var(--invis);
-  box-shadow: 0 0 0 1px var(--invis), 0 4px 20px rgba(0,91,153,0.12);
-}
-/* Luxe gold theme */
-.tx-card.luxe { border-color: var(--luxe-border); }
-.tx-card.luxe.selected {
-  border-color: var(--luxe);
-  box-shadow: 0 0 0 1px var(--luxe), 0 4px 20px rgba(146,104,10,0.12);
-  background: var(--luxe-bg);
-}
-
-/* Circle indicator — shows ✓ when unselected, order number when selected */
-.tx-indicator {
-  position: absolute; top: 11px; right: 11px;
-  width: 22px; height: 22px; border-radius: 50%;
-  border: 1.5px solid var(--border);
-  background: var(--surface2);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
-  color: transparent;
-  transition: all var(--transition);
-}
-.tx-card.selected           .tx-indicator { background: var(--accent); border-color: var(--accent); color: #fff; }
-.tx-card.invis.selected     .tx-indicator { background: var(--invis);  border-color: var(--invis); }
-.tx-card.luxe.selected      .tx-indicator { background: var(--luxe);   border-color: var(--luxe); }
-
-.tx-tier {
-  font-size: 9px; font-weight: 700;
-  letter-spacing: 1.2px; text-transform: uppercase;
-  color: var(--text-tertiary); margin-bottom: 3px;
-}
-.tx-card.invis .tx-tier { color: var(--invis); }
-.tx-card.luxe  .tx-tier { color: var(--luxe); }
-
-.tx-name {
-  font-family: 'DM Serif Display', serif;
-  font-size: 21px; letter-spacing: -0.3px;
-  color: var(--text-primary);
-  margin-bottom: 2px; line-height: 1.1;
-}
-.tx-case  { font-size: 10.5px; color: var(--text-tertiary); margin-bottom: 9px; }
-
-.tx-price {
-  font-size: 12px; font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.4; min-height: 34px;
-  transition: color var(--transition);
-}
-.tx-price.placeholder { color: var(--text-tertiary); font-weight: 400; font-size: 11px; }
-
-.tx-features {
-  list-style: none;
-  margin-top: 9px; padding-top: 9px;
-  border-top: 1px solid var(--border-light);
-}
-.tx-features li {
-  font-size: 10.5px; color: var(--text-secondary);
-  padding: 2px 0;
-  display: flex; align-items: center; gap: 5px;
-}
-.tx-features li::before {
-  content: '';
-  width: 4px; height: 4px; border-radius: 50%;
-  background: var(--border); flex-shrink: 0;
-  transition: background var(--transition);
-}
-.tx-card.selected           .tx-features li::before { background: var(--accent); }
-.tx-card.invis.selected     .tx-features li::before { background: var(--invis); }
-.tx-card.luxe.selected      .tx-features li::before { background: var(--luxe); }
-
-.tx-invis-plan {
-  display: inline-block;
-  font-size: 10.5px; font-weight: 600; color: var(--invis);
-  background: var(--invis-bg); border-radius: 6px;
-  padding: 3px 8px; margin-top: 7px;
-}
-.tx-disclaimer { font-size: 10px; color: var(--text-tertiary); font-style: italic; margin-top: 4px; }
-
-/* ─────────────────────────────────────────────
-   STICKY BOTTOM CTA
-───────────────────────────────────────────── */
-.sticky-cta {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: rgba(245,244,241,0.94);
-  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-  border-top: 1px solid var(--border);
-  padding: 11px 18px;
-  padding-bottom: calc(11px + env(safe-area-inset-bottom));
-  z-index: 200;
-}
-.cta-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 9px; }
-
-.cta-chip {
-  flex-shrink: 0; background: var(--accent); color: #fff;
-  border-radius: 9px; padding: 8px 13px;
-  font-size: 12.5px; font-weight: 600; white-space: nowrap;
-}
-.cta-btn {
-  flex: 1; background: var(--accent); color: #fff;
-  border: none; border-radius: 11px; padding: 13px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 14.5px; font-weight: 600;
-  cursor: pointer; letter-spacing: -0.2px;
-  transition: all var(--transition);
-}
-.cta-btn:hover  { opacity: 0.88; }
-.cta-btn:active { transform: scale(0.98); }
-
-/* ─────────────────────────────────────────────
-   SUMMARY MODAL
-───────────────────────────────────────────── */
-.modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(15,14,12,0.72);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  z-index: 500;
-  display: flex; align-items: flex-end; justify-content: center;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.24s ease;
-}
-.modal-overlay.open { opacity: 1; pointer-events: all; }
-
-.modal-sheet {
-  background: var(--bg);
-  width: 100%; max-width: 480px;
-  border-radius: 22px 22px 0 0;
-  max-height: 96vh; overflow-y: auto;
-  transform: translateY(60px);
-  transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.modal-overlay.open .modal-sheet { transform: translateY(0); }
-
-.modal-handle {
-  width: 36px; height: 4px; background: var(--border);
-  border-radius: 2px; margin: 11px auto 13px;
-}
-.modal-header {
-  padding: 0 17px 13px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-}
-.modal-title  { font-size: 15.5px; font-weight: 700; letter-spacing: -0.2px; }
-.modal-close {
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 50%; width: 27px; height: 27px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 13px; color: var(--text-secondary);
-  transition: background var(--transition);
-}
-.modal-close:hover { background: var(--border); }
-
-/* Modal action buttons */
-.modal-actions { padding: 11px 13px; display: flex; gap: 8px; }
-
-.btn-primary {
-  flex: 1; background: var(--accent); color: #fff;
-  border: none; border-radius: 11px; padding: 13px;
-  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-  transition: all var(--transition);
-}
-.btn-primary:hover  { opacity: 0.88; }
-.btn-primary:active { transform: scale(0.98); }
-
-.btn-secondary {
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 11px; padding: 13px 18px;
-  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
-  cursor: pointer; color: var(--text-secondary);
-  transition: background var(--transition);
-}
-.btn-secondary:hover  { background: var(--border); }
-.btn-secondary:active { transform: scale(0.98); }
-
-/* ─────────────────────────────────────────────
-   SUMMARY CARD  (screenshot target)
-───────────────────────────────────────────── */
-#summary-card {
-  margin: 13px;
-  background: var(--bg);
-  border-radius: var(--radius);
-  overflow: hidden;
-  padding: 4px;
-}
-
-.sc-section-lbl {
-  font-size: 9.5px; font-weight: 700;
-  letter-spacing: 1.3px; text-transform: uppercase;
-  color: var(--text-tertiary);
-  margin: 12px 0 7px; padding: 0 2px;
-}
-
-/* Top bar: clinic logo + name + date */
-.sc-top {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 11px 13px;
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 10px;
-}
-.sc-clinic-logo {
-  width: 32px; height: 32px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; overflow: hidden; position: relative;
-}
-.sc-clinic-logo img {
-  width: 100%; height: 100%; object-fit: cover;
-  display: none; position: absolute; inset: 0;
-}
-.sc-clinic-logo-ph { font-family: 'DM Serif Display', serif; font-size: 13px; color: #fff; }
-.sc-clinic-info { flex: 1; min-width: 0; }
-.sc-clinic-name { font-size: 12px; font-weight: 700; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sc-clinic-tag  { font-size: 9px; color: var(--text-tertiary); margin-top: 1px; }
-.sc-date-txt    { font-size: 9px; color: var(--text-tertiary); white-space: nowrap; flex-shrink: 0; }
-
-/* Patient row with severity pill */
-.sc-patient-row {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 11px 13px;
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin-bottom: 10px;
-}
-.sc-patient-name { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.1; }
-.sc-patient-meta { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
-
-.sc-sev-pill {
-  padding: 4px 10px; border-radius: 20px; flex-shrink: 0;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
-}
-.sc-sev-pill.mild     { background: var(--mild-light);     color: var(--mild); }
-.sc-sev-pill.moderate { background: var(--moderate-light); color: var(--moderate); }
-.sc-sev-pill.severe   { background: var(--severe-light);   color: var(--severe); }
-.sc-sev-pill.default  { background: var(--border);         color: var(--text-tertiary); }
-
-/* Severity card inside summary (mirrors main severity-card) */
-.sc-severity-card {
-  border-radius: var(--radius);
-  border: 2px solid var(--border);
-  padding: 13px 15px; margin-bottom: 10px;
-  background: var(--surface);
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  transition: all 0.26s ease;
-}
-.sc-severity-card.mild     { border-color: var(--mild);     background: var(--mild-bg); }
-.sc-severity-card.moderate { border-color: var(--moderate); background: var(--moderate-bg); }
-.sc-severity-card.severe   { border-color: var(--severe);   background: var(--severe-bg); }
-
-.sc-sev-tag {
-  display: inline-block;
-  font-size: 9px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
-  padding: 2px 9px; border-radius: 20px;
-  background: var(--border); color: var(--text-tertiary);
-  margin-bottom: 5px; transition: all 0.26s ease;
-}
-.sc-severity-card.mild     .sc-sev-tag { background: var(--mild-light);     color: var(--mild); }
-.sc-severity-card.moderate .sc-sev-tag { background: var(--moderate-light); color: var(--moderate); }
-.sc-severity-card.severe   .sc-sev-tag { background: var(--severe-light);   color: var(--severe); }
-
-.sc-sev-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: 24px; letter-spacing: -0.5px;
-  color: var(--text-tertiary); line-height: 1;
-  transition: color 0.26s ease;
-}
-.sc-severity-card.mild     .sc-sev-title { color: var(--mild); }
-.sc-severity-card.moderate .sc-sev-title { color: var(--moderate); }
-.sc-severity-card.severe   .sc-sev-title { color: var(--severe); }
-
-.sc-sev-desc {
-  font-size: 10.5px; color: var(--text-tertiary);
-  margin-top: 4px; line-height: 1.4;
-  transition: color 0.26s ease;
-}
-.sc-severity-card.mild     .sc-sev-desc { color: #4ade80; }
-.sc-severity-card.moderate .sc-sev-desc { color: #d97706; }
-.sc-severity-card.severe   .sc-sev-desc { color: #ef4444; }
-
-.sc-sev-bubble {
-  flex-shrink: 0; width: 50px; height: 50px; border-radius: 50%;
-  background: rgba(0,0,0,0.05);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  transition: background 0.26s ease;
-}
-.sc-severity-card.mild     .sc-sev-bubble { background: rgba(22,163,74,0.12); }
-.sc-severity-card.moderate .sc-sev-bubble { background: rgba(217,119,6,0.12); }
-.sc-severity-card.severe   .sc-sev-bubble { background: rgba(220,38,38,0.12); }
-
-.sc-sev-num {
-  font-family: 'DM Serif Display', serif;
-  font-size: 20px; line-height: 1; letter-spacing: -0.5px;
-  color: var(--text-tertiary); transition: color 0.26s ease;
-}
-.sc-severity-card.mild     .sc-sev-num { color: var(--mild); }
-.sc-severity-card.moderate .sc-sev-num { color: var(--moderate); }
-.sc-severity-card.severe   .sc-sev-num { color: var(--severe); }
-.sc-sev-lbl { font-size: 8px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-tertiary); margin-top: 2px; }
-
-/* Treatment option cards grid inside summary (mirrors main tx-card) */
-.sc-tx-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px; margin-bottom: 10px;
-}
-.sc-tx-card {
-  background: var(--surface);
-  border-radius: 13px;
-  border: 2px solid var(--border);
-  padding: 11px 12px;
-  position: relative; overflow: hidden;
-}
-.sc-tx-card.invis { border-color: rgba(0,91,153,0.25); }
-.sc-tx-card.luxe  { border-color: var(--luxe-border); background: var(--luxe-bg); }
-
-/* Number badge (top-right) */
-.sc-tx-num {
-  position: absolute; top: 9px; right: 9px;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--accent); color: #fff;
-  font-size: 9px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-}
-.sc-tx-card.invis .sc-tx-num { background: var(--invis); }
-.sc-tx-card.luxe  .sc-tx-num { background: var(--luxe); }
-
-/* "Recommended" ribbon replacing number on first card */
-.sc-tx-recommended {
-  position: absolute; top: 0; left: 0;
-  background: var(--accent); color: #fff;
-  font-size: 7.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
-  padding: 3px 8px; border-bottom-right-radius: 8px;
-}
-.sc-tx-card.luxe  .sc-tx-recommended { background: var(--luxe); }
-.sc-tx-card.invis .sc-tx-recommended { background: var(--invis); }
-
-.sc-tx-tier {
-  font-size: 8.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
-  color: var(--text-tertiary); margin-bottom: 2px;
-}
-.sc-tx-card.invis .sc-tx-tier { color: var(--invis); }
-.sc-tx-card.luxe  .sc-tx-tier { color: var(--luxe); }
-
-.sc-tx-name {
-  font-family: 'DM Serif Display', serif;
-  font-size: 17px; letter-spacing: -0.3px;
-  color: var(--text-primary); line-height: 1.1; margin-bottom: 2px;
-}
-.sc-tx-price  { font-size: 10.5px; font-weight: 700; color: var(--text-primary); line-height: 1.3; margin-bottom: 7px; }
-
-.sc-tx-features { list-style: none; padding-top: 7px; border-top: 1px solid var(--border-light); }
-.sc-tx-features li {
-  font-size: 9.5px; color: var(--text-secondary);
-  padding: 1.5px 0; display: flex; align-items: center; gap: 5px;
-}
-.sc-tx-features li::before {
-  content: ''; width: 3.5px; height: 3.5px; border-radius: 50%;
-  background: var(--accent); flex-shrink: 0;
-}
-.sc-tx-card.invis .sc-tx-features li::before { background: var(--invis); }
-.sc-tx-card.luxe  .sc-tx-features li::before { background: var(--luxe); }
-
-.sc-tx-invis-badge {
-  font-size: 9px; font-weight: 600; color: var(--invis);
-  background: var(--invis-bg); border-radius: 5px;
-  padding: 2px 6px; display: inline-block; margin-top: 5px;
-}
-.sc-no-plans { font-size: 11px; color: var(--text-tertiary); font-style: italic; text-align: center; padding: 8px 0; }
-
-/* Advanced auxiliaries tags row */
-.sc-aux-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.sc-aux-tag {
-  font-size: 9.5px; font-weight: 600; color: var(--text-secondary);
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 5px; padding: 2px 8px;
-}
-
-/* Static phone CTA — styled as a visual button */
-.sc-phone-cta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 10px;
-  padding: 11px 13px;
-  margin-bottom: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1px;
-}
-
-.sc-disclaimer {
-  font-size: 9px; color: var(--text-tertiary); text-align: center;
-  padding: 9px 4px 4px; line-height: 1.5;
-}
-.sc-footer {
-  text-align: center; padding: 6px 0 2px;
-  font-size: 8px; font-weight: 700;
-  letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-tertiary);
-}
-
-/* ─────────────────────────────────────────────
-   ANIMATION
-───────────────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.card, .param-card, .tx-card, .severity-card { animation: fadeUp 0.32s ease both; }
-</style>
 </head>
 
 <body>
@@ -953,14 +23,12 @@ select.field-input { cursor: pointer; }
 ════════════════════════════════════════════ -->
 <header class="header">
   <div class="header-left">
-    <!-- Logo: tap to upload custom image -->
     <div class="clinic-logo">
       <img id="clinic-logo-img" alt="Clinic Logo">
       <span class="clinic-logo-placeholder" id="clinic-logo-ph">F</span>
     </div>
-    <input type="file" id="logo-upload" accept="image/*" onchange="handleLogoUpload(event)" style="display:none">
+    <input type="file" id="logo-upload" accept="image/*" onchange="handleLogoUpload(event)">
 
-    <!-- Static clinic identity -->
     <div class="clinic-name-block">
       <span class="clinic-name-static">Flosswork Dental Clinic</span>
       <span class="clinic-tagline-static">Dentistry redesigned</span>
@@ -1028,7 +96,10 @@ select.field-input { cursor: pointer; }
   <div class="section-label">Clinical Scoring</div>
 
   <div class="param-card" id="pc-crowding" style="animation-delay:.06s">
-    <div class="param-header"><span class="param-name">Crowding / Spacing</span><span class="param-weight">×1</span></div>
+    <div class="param-header">
+      <span class="param-name">Crowding / Spacing</span>
+      <span class="param-weight">×1</span>
+    </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('crowding',1,this)"><div class="seg-value">1</div><div class="seg-desc">≤3 mm</div></button>
       <button class="seg-btn" data-val="2" onclick="selectParam('crowding',2,this)"><div class="seg-value">2</div><div class="seg-desc">4–6 mm</div></button>
@@ -1037,7 +108,10 @@ select.field-input { cursor: pointer; }
   </div>
 
   <div class="param-card" id="pc-rotation" style="animation-delay:.08s">
-    <div class="param-header"><span class="param-name">Rotation</span><span class="param-weight">×1.5</span></div>
+    <div class="param-header">
+      <span class="param-name">Rotation</span>
+      <span class="param-weight">×1.5</span>
+    </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('rotation',1,this)"><div class="seg-value">1</div><div class="seg-desc">&lt;15°</div></button>
       <button class="seg-btn" data-val="2" onclick="selectParam('rotation',2,this)"><div class="seg-value">2</div><div class="seg-desc">15–30°</div></button>
@@ -1046,7 +120,10 @@ select.field-input { cursor: pointer; }
   </div>
 
   <div class="param-card" id="pc-movement" style="animation-delay:.10s">
-    <div class="param-header"><span class="param-name">Movement Type</span><span class="param-weight">×2</span></div>
+    <div class="param-header">
+      <span class="param-name">Movement Type</span>
+      <span class="param-weight">×2</span>
+    </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('movement',1,this)"><div class="seg-value">1</div><div class="seg-desc">Tipping</div></button>
       <button class="seg-btn" data-val="2" onclick="selectParam('movement',2,this)"><div class="seg-value">2</div><div class="seg-desc">Controlled / Bodily</div></button>
@@ -1055,7 +132,10 @@ select.field-input { cursor: pointer; }
   </div>
 
   <div class="param-card" id="pc-bite" style="animation-delay:.12s">
-    <div class="param-header"><span class="param-name">Bite</span><span class="param-weight">×2</span></div>
+    <div class="param-header">
+      <span class="param-name">Bite</span>
+      <span class="param-weight">×2</span>
+    </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('bite',1,this)"><div class="seg-value">1</div><div class="seg-desc">Class I</div></button>
       <button class="seg-btn" data-val="2" onclick="selectParam('bite',2,this)"><div class="seg-value">2</div><div class="seg-desc">Deep / Open Bite</div></button>
@@ -1064,7 +144,10 @@ select.field-input { cursor: pointer; }
   </div>
 
   <div class="param-card" id="pc-aux" style="animation-delay:.14s">
-    <div class="param-header"><span class="param-name">Auxiliaries</span><span class="param-weight">×1</span></div>
+    <div class="param-header">
+      <span class="param-name">Auxiliaries</span>
+      <span class="param-weight">×1</span>
+    </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('aux',1,this)"><div class="seg-value">1</div><div class="seg-desc">None</div></button>
       <button class="seg-btn" data-val="2" onclick="selectParam('aux',2,this)"><div class="seg-value">2</div><div class="seg-desc">Attachments</div></button>
@@ -1073,7 +156,10 @@ select.field-input { cursor: pointer; }
   </div>
 
   <div class="param-card" id="pc-ipr" style="animation-delay:.16s">
-    <div class="param-header"><span class="param-name">IPR / Extraction</span><span class="param-weight">×2</span></div>
+    <div class="param-header">
+      <span class="param-name">IPR / Extraction</span>
+      <span class="param-weight">×2</span>
+    </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('ipr',1,this)"><div class="seg-value">1</div><div class="seg-desc">None</div></button>
       <button class="seg-btn" data-val="2" onclick="selectParam('ipr',2,this)"><div class="seg-value">2</div><div class="seg-desc">Mild IPR</div></button>
@@ -1082,7 +168,10 @@ select.field-input { cursor: pointer; }
   </div>
 
   <div class="param-card" id="pc-compliance" style="animation-delay:.18s">
-    <div class="param-header"><span class="param-name">Compliance</span><span class="param-weight">×1</span></div>
+    <div class="param-header">
+      <span class="param-name">Compliance</span>
+      <span class="param-weight">×1</span>
+    </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('compliance',1,this)"><div class="seg-value">1</div><div class="seg-desc">Good</div></button>
       <button class="seg-btn" data-val="2" onclick="selectParam('compliance',2,this)"><div class="seg-value">2</div><div class="seg-desc">Average</div></button>
@@ -1155,24 +244,27 @@ select.field-input { cursor: pointer; }
       <div class="tx-name">Budget</div>
       <div class="tx-case">Entry level</div>
       <div class="tx-price placeholder" id="txp-budget">Score case first</div>
+      <div class="tx-plan-badge tx-plan-basic" id="tx-budget-plan">—</div>
       <ul class="tx-features"><li>Limited aligners</li><li>Limited refinements</li></ul>
     </div>
 
-    <div class="tx-card" id="tx-ace" onclick="togglePlan('ace',this)" style="animation-delay:.26s">
+    <div class="tx-card ace" id="tx-ace" onclick="togglePlan('ace',this)" style="animation-delay:.26s">
       <div class="tx-indicator" id="txi-ace">✓</div>
       <div class="tx-tier">Plan 02</div>
       <div class="tx-name">Ace</div>
       <div class="tx-case">Mid-range</div>
       <div class="tx-price placeholder" id="txp-ace">Score case first</div>
+      <div class="tx-plan-badge tx-plan-popular" id="tx-ace-plan">—</div>
       <ul class="tx-features"><li>Moderate aligners</li><li>1–2 refinements</li></ul>
     </div>
 
     <div class="tx-card luxe" id="tx-luxe" onclick="togglePlan('luxe',this)" style="animation-delay:.28s">
-      <div class="tx-indicator" id="txi-luxe">✓</div>
+      <div class="tx-indicator" id="txi-luxe" style="border-color:var(--luxe)">✓</div>
       <div class="tx-tier">Plan 03</div>
       <div class="tx-name">Luxe</div>
       <div class="tx-case">Premium</div>
       <div class="tx-price placeholder" id="txp-luxe">Score case first</div>
+      <div class="tx-plan-badge tx-plan-premium" id="tx-luxe-plan">—</div>
       <ul class="tx-features"><li>Unlimited aligners</li><li>Multiple refinements</li></ul>
     </div>
 
@@ -1182,7 +274,7 @@ select.field-input { cursor: pointer; }
       <div class="tx-name">Invisalign</div>
       <div class="tx-case">Brand aligner</div>
       <div class="tx-price placeholder" id="txp-invis">Score case first</div>
-      <div class="tx-invis-plan" id="tx-invis-plan">—</div>
+      <div class="tx-plan-badge tx-plan-invis" id="tx-invis-plan">—</div>
       <div class="tx-disclaimer">Final plan depends on ClinCheck®</div>
     </div>
   </div>
@@ -1210,7 +302,7 @@ select.field-input { cursor: pointer; }
       <div class="modal-close" onclick="closeModal()">✕</div>
     </div>
 
-    <!-- ── Summary Card (html2canvas screenshot target) ── -->
+    <!-- Summary Card — html2canvas captures this element -->
     <div id="summary-card">
 
       <!-- Clinic branding bar -->
@@ -1226,7 +318,7 @@ select.field-input { cursor: pointer; }
         <div class="sc-date-txt" id="sc-date"></div>
       </div>
 
-      <!-- Patient row + severity pill -->
+      <!-- Patient name + severity pill -->
       <div class="sc-patient-row">
         <div>
           <div class="sc-patient-name" id="sc-patient-name">—</div>
@@ -1235,7 +327,7 @@ select.field-input { cursor: pointer; }
         <div class="sc-sev-pill default" id="sc-sev-pill">—</div>
       </div>
 
-      <!-- Case severity (mirrors main severity card) -->
+      <!-- Severity card -->
       <div class="sc-section-lbl">Case Severity</div>
       <div class="sc-severity-card" id="sc-severity-card">
         <div>
@@ -1249,26 +341,32 @@ select.field-input { cursor: pointer; }
         </div>
       </div>
 
-      <!-- Treatment options (mirrors main tx-card grid) -->
+      <!-- Treatment option cards -->
       <div class="sc-section-lbl">Treatment Options</div>
       <div class="sc-tx-grid" id="sc-tx-grid">
         <div class="sc-no-plans" style="grid-column:1/-1">No plans selected</div>
       </div>
 
-      <!-- Advanced auxiliaries (shown only when selected) -->
+      <!-- Advanced auxiliaries (visible only when selected) -->
       <div class="sc-aux-tags" id="sc-aux-tags" style="display:none"></div>
 
-      <!-- Static clinic phone CTA -->
+      <!-- Static phone CTA -->
       <div class="sc-phone-cta">📞 Call Clinic: +91-8354088822</div>
 
       <div class="sc-disclaimer">⚕️ Final prices and treatment plan may vary after scanning &amp; planning. For reference only.</div>
       <div class="sc-footer">Flosswork Dental Clinic · AlignerIQ</div>
+
     </div><!-- end #summary-card -->
 
-    <!-- Modal actions -->
+    <!-- Modal action buttons -->
     <div class="modal-actions">
       <button class="btn-primary" id="btn-share" onclick="shareOrDownload()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
         Share Summary
       </button>
       <button class="btn-secondary" onclick="closeModal()">Close</button>
@@ -1277,649 +375,8 @@ select.field-input { cursor: pointer; }
   </div><!-- end .modal-sheet -->
 </div><!-- end .modal-overlay -->
 
+<!-- App logic -->
+<script src="app.js"></script>
 
-<script>
-/* ═══════════════════════════════════════════════════════
-   STATE — single source of truth for the entire app
-════════════════════════════════════════════════════════ */
-const S = {
-  // Clinical scoring params (null = unset)
-  crowding:   null,
-  rotation:   null,
-  movement:   null,
-  bite:       null,
-  aux:        null,
-  ipr:        null,
-  compliance: null,
-
-  // Predictability penalties (each adds +2 to score)
-  penalties: {
-    intrusion: false,
-    root:      false,
-    canine:    false,
-    impaction: false
-  },
-
-  // Advanced auxiliary devices (display-only, no score impact)
-  auxDevices: {
-    mad:  false,
-    tads: false
-  },
-
-  // Derived
-  severity: null,  // 'mild' | 'moderate' | 'severe' | null
-
-  // UI selections
-  plans:       [],    // ordered array of selected plan keys
-  logoDataURL: null   // base64 of uploaded clinic logo
-};
-
-/* Ordered list of scoring parameter keys */
-const PARAMS = ['crowding','rotation','movement','bite','aux','ipr','compliance'];
-
-/* ═══════════════════════════════════════════════════════
-   CONFIGURATION — weights, labels, pricing, metadata
-════════════════════════════════════════════════════════ */
-
-/** Multipliers applied to each param's raw value (1–3) */
-const WEIGHTS = {
-  crowding:   1,
-  rotation:   1.5,
-  movement:   2,
-  bite:       2,
-  aux:        1,
-  ipr:        2,
-  compliance: 1
-};
-
-/** Human-readable labels for each param level */
-const PARAM_LABELS = {
-  crowding:   { 1:'≤3 mm',           2:'4–6 mm',              3:'≥7 mm' },
-  rotation:   { 1:'<15°',            2:'15–30°',               3:'>30°' },
-  movement:   { 1:'Tipping',         2:'Controlled/Bodily',    3:'Root/Vertical' },
-  bite:       { 1:'Class I',         2:'Deep/Open Bite',       3:'Class II/III/Crossbite' },
-  aux:        { 1:'None',            2:'Attachments',          3:'Elastics/TAD' },
-  ipr:        { 1:'None',            2:'Mild IPR',             3:'Extraction/Heavy IPR' },
-  compliance: { 1:'Good',            2:'Average',              3:'Poor' }
-};
-
-/**
- * Pricing matrix — prices change based on severity.
- * Each entry: { label, price, plan? (Invisalign only) }
- */
-const PRICING = {
-  mild: {
-    budget: { label:'Budget',     price:'₹60,000 – ₹1,00,000' },
-    ace:    { label:'Ace',        price:'₹90,000 – ₹1,40,000' },
-    luxe:   { label:'Luxe',       price:'₹1,20,000 – ₹2,00,000' },
-    invis:  { label:'Invisalign', price:'₹1,50,000 – ₹2,50,000', plan:'Express / Lite' }
-  },
-  moderate: {
-    budget: { label:'Budget',     price:'₹80,000 – ₹1,20,000' },
-    ace:    { label:'Ace',        price:'₹1,00,000 – ₹1,80,000' },
-    luxe:   { label:'Luxe',       price:'₹1,50,000 – ₹2,80,000' },
-    invis:  { label:'Invisalign', price:'₹2,00,000 – ₹3,50,000', plan:'Invisalign Moderate' }
-  },
-  severe: {
-    budget: { label:'Budget',     price:'₹1,00,000 – ₹1,50,000' },
-    ace:    { label:'Ace',        price:'₹1,50,000 – ₹2,20,000' },
-    luxe:   { label:'Luxe',       price:'₹2,00,000 – ₹3,50,000+' },
-    invis:  { label:'Invisalign', price:'₹3,00,000 – ₹5,00,000+', plan:'Invisalign Comprehensive' }
-  }
-};
-
-/** Short descriptor shown on the severity card */
-const SEV_SHORT = {
-  mild:     'Straightforward · Good predictability · 6–12 months',
-  moderate: 'Standard complexity · 1–2 refinements · 12–18 months',
-  severe:   'Advanced case · Multiple stages · 18–30 months'
-};
-
-/** Static plan metadata for summary card */
-const PLAN_META = {
-  budget: { tier:'Plan 01',     features:['Limited aligners','Limited refinements','Cost-effective'] },
-  ace:    { tier:'Plan 02',     features:['Moderate aligners','1–2 refinements','Balanced value'] },
-  luxe:   { tier:'Plan 03',     features:['Unlimited aligners','Multiple refinements','Priority planning'] },
-  invis:  { tier:'Invisalign®', features:['Brand aligners','ClinCheck® setup','Provider support'] }
-};
-
-/* ═══════════════════════════════════════════════════════
-   CACHED DOM REFERENCES — avoids repeated getElementById
-════════════════════════════════════════════════════════ */
-const DOM = {
-  scoreDisplay:  document.getElementById('score-display'),
-  categoryBadge: document.getElementById('category-badge'),
-  scoreBreakdown:document.getElementById('score-breakdown'),
-  ctaChip:       document.getElementById('cta-chip'),
-  severityResult:document.getElementById('severity-result'),
-  sevTag:        document.getElementById('sev-tag'),
-  sevTitle:      document.getElementById('sev-title'),
-  sevDesc:       document.getElementById('sev-desc'),
-  sevScoreNum:   document.getElementById('sev-score-num'),
-  progressLabel: document.getElementById('progress-label'),
-  progDots:      PARAMS.map((_,i) => document.getElementById('pd'+i)),
-  txInvisLabel:  document.getElementById('tx-invis-plan'),
-  // Summary modal
-  summaryModal:  document.getElementById('summary-modal'),
-  scClinicName:  document.getElementById('sc-clinic-name'),
-  scClinicTag:   document.getElementById('sc-clinic-tag'),
-  scDate:        document.getElementById('sc-date'),
-  scLogoPh:      document.getElementById('sc-logo-ph'),
-  scLogoImg:     document.getElementById('sc-logo-img'),
-  scPatientName: document.getElementById('sc-patient-name'),
-  scPatientMeta: document.getElementById('sc-patient-meta'),
-  scSevPill:     document.getElementById('sc-sev-pill'),
-  scSeverityCard:document.getElementById('sc-severity-card'),
-  scSevTag:      document.getElementById('sc-sev-tag'),
-  scSevTitle:    document.getElementById('sc-sev-title'),
-  scSevDesc:     document.getElementById('sc-sev-desc'),
-  scSevNum:      document.getElementById('sc-sev-num'),
-  scTxGrid:      document.getElementById('sc-tx-grid'),
-  scAuxTags:     document.getElementById('sc-aux-tags'),
-  btnShare:      document.getElementById('btn-share')
-};
-
-/* ═══════════════════════════════════════════════════════
-   HELPERS
-════════════════════════════════════════════════════════ */
-const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-
-/** Returns 'mild' | 'moderate' | 'severe' from raw score */
-function scoreToCategory(score) {
-  if (score <= 14) return 'mild';
-  if (score <= 19.5) return 'moderate';
-  return 'severe';
-}
-
-/* ═══════════════════════════════════════════════════════
-   SCORING ENGINE
-════════════════════════════════════════════════════════ */
-
-/** Calculates weighted score from params + penalties */
-function calculateScore() {
-  const base = PARAMS.reduce((sum, p) => sum + (S[p] * WEIGHTS[p]), 0);
-  const penaltyTotal = Object.values(S.penalties).filter(Boolean).length * 2;
-  return base + penaltyTotal;
-}
-
-/**
- * Determines severity category with override rules:
- * - Extraction (ipr=3) or Class II/III (bite=3) → always Severe
- * - Elastics/TAD (aux=3) → minimum Moderate
- */
-function determineSeverity(score) {
-  if (S.ipr === 3 || S.bite === 3) return 'severe';
-  if (S.aux === 3) {
-    const base = scoreToCategory(score);
-    return base === 'mild' ? 'moderate' : base;
-  }
-  return scoreToCategory(score);
-}
-
-/* ═══════════════════════════════════════════════════════
-   UI UPDATERS
-════════════════════════════════════════════════════════ */
-
-/** Updates the main score banner and sticky CTA chip */
-function updateScoreBanner(score, cat) {
-  DOM.scoreDisplay.textContent  = score;
-  DOM.scoreBreakdown.textContent = '≤14 Mild · 14.5–19.5 Mod · ≥20 Severe';
-  DOM.ctaChip.textContent       = `Score: ${score} · ${cap(cat)}`;
-  DOM.categoryBadge.textContent = cap(cat);
-  DOM.categoryBadge.className   = `score-category ${cat}`;
-}
-
-/** Resets score banner to incomplete state */
-function clearScoreBanner() {
-  DOM.scoreDisplay.textContent   = '—';
-  DOM.categoryBadge.textContent  = 'Incomplete';
-  DOM.categoryBadge.className    = 'score-category';
-  DOM.scoreBreakdown.textContent = 'Fill all parameters';
-  DOM.ctaChip.textContent        = 'Score: —';
-}
-
-/** Updates the severity result card on the main page */
-function updateSeverityCard(cat, score) {
-  DOM.severityResult.className = `severity-card${cat ? ' ' + cat : ''}`;
-  if (!cat) {
-    DOM.sevTag.textContent   = 'Awaiting Score';
-    DOM.sevTitle.textContent = '—';
-    DOM.sevDesc.textContent  = 'Complete all 7 parameters to classify';
-    DOM.sevScoreNum.textContent = '—';
-    return;
-  }
-  DOM.sevTag.textContent      = 'Case Severity';
-  DOM.sevTitle.textContent    = cap(cat);
-  DOM.sevDesc.textContent     = SEV_SHORT[cat];
-  DOM.sevScoreNum.textContent = score;
-}
-
-/** Updates all 4 treatment option card prices */
-function updatePrices(cat) {
-  const plans = ['budget', 'ace', 'luxe', 'invis'];
-  if (!cat) {
-    plans.forEach(p => {
-      const el = document.getElementById('txp-' + p);
-      if (el) { el.textContent = 'Score case first'; el.className = 'tx-price placeholder'; }
-    });
-    if (DOM.txInvisLabel) DOM.txInvisLabel.textContent = '—';
-    return;
-  }
-  const m = PRICING[cat];
-  plans.forEach(p => {
-    const el = document.getElementById('txp-' + p);
-    if (el) { el.textContent = m[p].price; el.className = 'tx-price'; }
-  });
-  if (DOM.txInvisLabel) DOM.txInvisLabel.textContent = m.invis.plan;
-}
-
-/** Updates progress dots and label */
-function updateProgress(filledCount) {
-  DOM.progDots.forEach((dot, i) => {
-    if (dot) dot.classList.toggle('done', i < filledCount);
-  });
-  DOM.progressLabel.textContent = `${filledCount} of 7 parameters selected`;
-}
-
-/** Syncs all treatment card selected states and order numbers */
-function renderPlanCards() {
-  ['budget', 'ace', 'luxe', 'invis'].forEach(k => {
-    const card = document.getElementById('tx-' + k);
-    const ind  = document.getElementById('txi-' + k);
-    if (!card || !ind) return;
-    const idx = S.plans.indexOf(k);
-    if (idx !== -1) {
-      card.classList.add('selected');
-      ind.textContent = idx + 1;
-    } else {
-      card.classList.remove('selected');
-      ind.textContent = '✓';
-    }
-  });
-}
-
-/* ═══════════════════════════════════════════════════════
-   MAIN RECALCULATE — called on every param/penalty change
-════════════════════════════════════════════════════════ */
-function recalculate() {
-  const filled = PARAMS.filter(p => S[p] !== null);
-  updateProgress(filled.length);
-
-  if (filled.length < 7) {
-    clearScoreBanner();
-    updateSeverityCard(null, null);
-    updatePrices(null);
-    S.severity = null;
-    return;
-  }
-
-  const score = calculateScore();
-  const cat   = determineSeverity(score);
-  const sr    = Math.round(score * 10) / 10;
-
-  S.severity = cat;
-  updateScoreBanner(sr, cat);
-  updateSeverityCard(cat, sr);
-  updatePrices(cat);
-}
-
-/* ═══════════════════════════════════════════════════════
-   EVENT HANDLERS
-════════════════════════════════════════════════════════ */
-
-/** Called when user taps a segmented button */
-function selectParam(param, val, btn) {
-  S[param] = val;
-  // Deactivate siblings, activate tapped button
-  btn.closest('.seg-group').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('pc-' + param)?.classList.add('selected');
-  recalculate();
-  persistState();
-}
-
-/** Called when user taps a penalty chip */
-function togglePenalty(key, el) {
-  S.penalties[key] = !S.penalties[key];
-  el.classList.toggle('active', S.penalties[key]);
-  recalculate();
-  persistState();
-}
-
-/** Called when user taps an aux device chip */
-function toggleAux(key, el) {
-  S.auxDevices[key] = !S.auxDevices[key];
-  el.classList.toggle('active', S.auxDevices[key]);
-  persistState();
-}
-
-/** Called when user taps a treatment option card */
-function togglePlan(key, el) {
-  const idx = S.plans.indexOf(key);
-  if (idx === -1) S.plans.push(key);
-  else S.plans.splice(idx, 1);
-  renderPlanCards();
-  persistState();
-}
-
-/** Handles clinic logo file upload */
-function handleLogoUpload(e) {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    S.logoDataURL = ev.target.result;
-    const img = document.getElementById('clinic-logo-img');
-    if (img) { img.src = S.logoDataURL; img.style.display = 'block'; }
-    const ph = document.getElementById('clinic-logo-ph');
-    if (ph)  ph.style.display = 'none';
-    persistState();
-  };
-  reader.readAsDataURL(file);
-}
-
-/* ═══════════════════════════════════════════════════════
-   SUMMARY MODAL
-════════════════════════════════════════════════════════ */
-
-/** Opens modal and populates all summary card fields */
-function openSummary() {
-  populateSummaryCard();
-  DOM.summaryModal.classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal() {
-  DOM.summaryModal.classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-function handleModalOverlayClick(e) {
-  if (e.target === DOM.summaryModal) closeModal();
-}
-
-/** Fills every field inside #summary-card with current state */
-function populateSummaryCard() {
-  const pName = document.getElementById('patient-name')?.value.trim() || 'Patient';
-  const age   = document.getElementById('patient-age')?.value  || '—';
-  const sex   = document.getElementById('patient-sex')?.value  || '—';
-  const cat   = S.severity;
-  const score = DOM.scoreDisplay.textContent;
-
-  // Clinic branding (static)
-  DOM.scClinicName.textContent = 'Flosswork Dental Clinic';
-  DOM.scClinicTag.textContent  = 'Dentistry redesigned';
-  DOM.scDate.textContent = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
-
-  // Logo — always show logo.png; placeholder only if image errors
-  DOM.scLogoPh.textContent       = 'F';
-  DOM.scLogoPh.style.display     = 'none';
-  DOM.scLogoImg.src              = S.logoDataURL || 'logo.png';
-  DOM.scLogoImg.style.display    = 'block';
-  DOM.scLogoImg.onerror          = () => {
-    DOM.scLogoImg.style.display  = 'none';
-    DOM.scLogoPh.style.display   = 'block';
-  };
-
-  // Patient
-  DOM.scPatientName.textContent = pName;
-  DOM.scPatientMeta.textContent = `Age ${age} · ${sex}`;
-
-  // Severity pill
-  DOM.scSevPill.textContent = cat ? cap(cat) : '—';
-  DOM.scSevPill.className   = `sc-sev-pill ${cat || 'default'}`;
-
-  // Severity card
-  DOM.scSeverityCard.className    = `sc-severity-card${cat ? ' ' + cat : ''}`;
-  DOM.scSevTag.textContent        = cat ? 'Case Severity' : 'Awaiting Score';
-  DOM.scSevTitle.textContent      = cat ? cap(cat) : '—';
-  DOM.scSevDesc.textContent       = cat ? SEV_SHORT[cat] : 'Complete all parameters to classify';
-  DOM.scSevNum.textContent        = (cat && score !== '—') ? score : '—';
-
-  // Treatment options grid
-  renderSummaryPlans(cat);
-
-  // Advanced auxiliaries tags
-  renderSummaryAuxTags();
-}
-
-/** Renders selected plan cards into the summary grid */
-function renderSummaryPlans(cat) {
-  if (S.plans.length === 0) {
-    DOM.scTxGrid.innerHTML = '<div class="sc-no-plans" style="grid-column:1/-1">No plans selected</div>';
-    return;
-  }
-  const m = cat ? PRICING[cat] : null;
-  DOM.scTxGrid.innerHTML = S.plans.map((p, i) => {
-    const isInvis  = p === 'invis';
-    const isLuxe   = p === 'luxe';
-    const meta     = PLAN_META[p];
-    const label    = m ? m[p].label    : cap(p);
-    const price    = m ? m[p].price    : '—';
-    const invisPlan = (isInvis && m)   ? m.invis.plan : '';
-    const cardClass = ['sc-tx-card', isInvis?'invis':'', isLuxe?'luxe':''].filter(Boolean).join(' ');
-    // First card gets "Recommended" ribbon, others get order number
-    const badge = i === 0
-      ? '<div class="sc-tx-recommended">★ Recommended</div>'
-      : `<div class="sc-tx-num">${i + 1}</div>`;
-    const feats = meta.features.map(f => `<li>${f}</li>`).join('');
-    return `<div class="${cardClass}">
-      ${badge}
-      <div class="sc-tx-tier" style="margin-top:${i===0?'16px':'0'}">${meta.tier}</div>
-      <div class="sc-tx-name">${label}</div>
-      <div class="sc-tx-price">${price}</div>
-      <ul class="sc-tx-features">${feats}</ul>
-      ${invisPlan ? `<div class="sc-tx-invis-badge">${invisPlan}</div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-/** Shows aux device and impaction tags if any are selected */
-function renderSummaryAuxTags() {
-  const active = [];
-  if (S.auxDevices.mad)       active.push('MAD Device');
-  if (S.auxDevices.tads)      active.push('TADs');
-  if (S.penalties.impaction)  active.push('Impaction');
-  if (active.length) {
-    DOM.scAuxTags.style.display = 'flex';
-    DOM.scAuxTags.innerHTML = active.map(a => `<span class="sc-aux-tag">⚙️ ${a}</span>`).join('');
-  } else {
-    DOM.scAuxTags.style.display = 'none';
-  }
-}
-
-/* ═══════════════════════════════════════════════════════
-   SHARE / DOWNLOAD
-════════════════════════════════════════════════════════ */
-
-/**
- * Generates PNG from #summary-card using html2canvas.
- * Uses Web Share API if available (mobile), falls back to download.
- */
-async function shareOrDownload() {
-  const card  = document.getElementById('summary-card');
-  const btn   = DOM.btnShare;
-  const label = btn.innerHTML;
-  btn.innerHTML = 'Generating…';
-  btn.disabled  = true;
-
-  try {
-    const canvas = await html2canvas(card, { scale:3, useCORS:true, backgroundColor:'#F5F4F1', logging:false });
-    const blob   = await new Promise(res => canvas.toBlob(res, 'image/png'));
-    const pName  = (document.getElementById('patient-name')?.value.trim() || 'case').replace(/\s+/g, '-');
-    const fileName = `FlossworkDental-${pName}.png`;
-    const file   = new File([blob], fileName, { type:'image/png' });
-
-    if (navigator.share && navigator.canShare?.({ files:[file] })) {
-      await navigator.share({ title:`Case Summary — ${pName}`, files:[file] });
-    } else {
-      // Fallback: trigger download
-      const url  = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = fileName;
-      link.href = url;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-  } catch (e) {
-    if (e.name !== 'AbortError') alert('Could not share. Try screenshotting manually.');
-  }
-
-  btn.innerHTML = label;
-  btn.disabled  = false;
-}
-
-/* ═══════════════════════════════════════════════════════
-   RESET
-════════════════════════════════════════════════════════ */
-function resetAll() {
-  // Clear state
-  PARAMS.forEach(k => S[k] = null);
-  Object.keys(S.penalties).forEach(k   => S.penalties[k]   = false);
-  Object.keys(S.auxDevices).forEach(k  => S.auxDevices[k]  = false);
-  S.severity    = null;
-  S.plans       = [];
-  S.logoDataURL = null;
-
-  // Clear UI
-  document.querySelectorAll('.seg-btn').forEach(b   => b.classList.remove('active'));
-  document.querySelectorAll('.param-card').forEach(c => c.classList.remove('selected'));
-  document.querySelectorAll('.penalty-chip').forEach(c => c.classList.remove('active'));
-  document.querySelectorAll('.aux-chip').forEach(c   => c.classList.remove('active'));
-  document.querySelectorAll('.tx-card').forEach(c    => c.classList.remove('selected'));
-
-  // Clear patient fields
-  ['patient-name','patient-age','patient-sex'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-
-  // Restore logo.png (don't hide — just clear any uploaded override)
-  const logoImg = document.getElementById('clinic-logo-img');
-  const logoPh  = document.getElementById('clinic-logo-ph');
-  if (logoImg) {
-    logoImg.src = 'logo.png';
-    logoImg.style.display = 'block';
-    logoImg.onerror = () => { logoImg.style.display = 'none'; if (logoPh) logoPh.style.display = 'block'; };
-  }
-  if (logoPh) logoPh.style.display = 'none';
-
-  recalculate();
-  renderPlanCards();
-  localStorage.removeItem('aligneriq_v3');
-}
-
-/* ═══════════════════════════════════════════════════════
-   PERSISTENCE — save/load via localStorage
-════════════════════════════════════════════════════════ */
-function persistState() {
-  try {
-    localStorage.setItem('aligneriq_v3', JSON.stringify({
-      params:     Object.fromEntries(PARAMS.map(p => [p, S[p]])),
-      penalties:  { ...S.penalties },
-      auxDevices: { ...S.auxDevices },
-      plans:      [ ...S.plans ],
-      logoDataURL: S.logoDataURL,
-      patient: {
-        name: document.getElementById('patient-name')?.value || '',
-        age:  document.getElementById('patient-age')?.value  || '',
-        sex:  document.getElementById('patient-sex')?.value  || ''
-      }
-    }));
-  } catch (_) { /* storage full or unavailable — silently ignore */ }
-}
-
-function loadPersistedState() {
-  try {
-    const raw = localStorage.getItem('aligneriq_v3');
-    if (!raw) return;
-    const d = JSON.parse(raw);
-
-    // Restore param values and highlight active buttons
-    if (d.params) {
-      PARAMS.forEach(p => {
-        if (!d.params[p]) return;
-        S[p] = d.params[p];
-        const card = document.getElementById('pc-' + p);
-        const btn  = card?.querySelector(`.seg-btn[data-val="${d.params[p]}"]`);
-        if (btn)  { btn.classList.add('active'); card.classList.add('selected'); }
-      });
-    }
-
-    // Restore penalty chips
-    if (d.penalties) {
-      Object.keys(d.penalties).forEach(k => {
-        if (!(k in S.penalties)) return;
-        S.penalties[k] = d.penalties[k];
-        if (d.penalties[k]) document.getElementById('pen-' + k)?.classList.add('active');
-      });
-    }
-
-    // Restore aux device chips
-    if (d.auxDevices) {
-      Object.keys(d.auxDevices).forEach(k => {
-        if (!(k in S.auxDevices)) return;
-        S.auxDevices[k] = d.auxDevices[k];
-        if (d.auxDevices[k]) document.getElementById('aux-' + k)?.classList.add('active');
-      });
-    }
-
-    // Restore plan selections
-    if (Array.isArray(d.plans)) {
-      S.plans = [...d.plans];
-      renderPlanCards();
-    }
-
-    // Restore uploaded logo
-    if (d.logoDataURL) {
-      S.logoDataURL = d.logoDataURL;
-      const img = document.getElementById('clinic-logo-img');
-      const ph  = document.getElementById('clinic-logo-ph');
-      if (img) { img.src = d.logoDataURL; img.style.display = 'block'; }
-      if (ph)  ph.style.display = 'none';
-    }
-
-    // Restore patient fields
-    if (d.patient) {
-      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-      set('patient-name', d.patient.name);
-      set('patient-age',  d.patient.age);
-      set('patient-sex',  d.patient.sex);
-    }
-  } catch (_) { /* corrupted storage — silently ignore */ }
-}
-
-/* ═══════════════════════════════════════════════════════
-   INIT
-════════════════════════════════════════════════════════ */
-window.addEventListener('DOMContentLoaded', () => {
-  // Pre-load logo.png if it exists alongside the HTML file
-  const autoLogo = document.getElementById('clinic-logo-img');
-  if (autoLogo) {
-    autoLogo.src = 'logo.png';
-    autoLogo.style.display = 'block';
-    autoLogo.onerror = () => { autoLogo.style.display = 'none'; };
-    const ph = document.getElementById('clinic-logo-ph');
-    if (ph) ph.style.display = 'none';
-    // Also set in summary
-    if (DOM.scLogoImg) {
-      DOM.scLogoImg.src = 'logo.png';
-      DOM.scLogoImg.style.display = 'block';
-      DOM.scLogoImg.onerror = () => { DOM.scLogoImg.style.display = 'none'; };
-      if (DOM.scLogoPh) DOM.scLogoPh.style.display = 'none';
-    }
-  }
-
-  loadPersistedState();
-  recalculate();
-
-  // Save patient fields on change
-  ['patient-name','patient-age','patient-sex'].forEach(id => {
-    const el = document.getElementById(id);
-    el?.addEventListener('input',  persistState);
-    el?.addEventListener('change', persistState);
-  });
-});
-</script>
 </body>
 </html>
