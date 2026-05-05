@@ -38,7 +38,7 @@
 </header>
 
 <!-- ═══════════════════════════════════════════
-     STICKY PROGRESS BAR — 7 dots, one per param
+     STICKY PROGRESS BAR — 8 dots, one per param
 ════════════════════════════════════════════ -->
 <div class="progress-sticky">
   <div class="prog-dot" id="pd0"></div>
@@ -48,7 +48,9 @@
   <div class="prog-dot" id="pd4"></div>
   <div class="prog-dot" id="pd5"></div>
   <div class="prog-dot" id="pd6"></div>
-  <span class="prog-label" id="progress-label">0 of 7 parameters selected</span>
+  <div class="prog-dot" id="pd7"></div>
+  <div class="prog-dot" id="pd8"></div>
+  <span class="prog-label" id="progress-label">0 of 9 parameters selected</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -98,7 +100,6 @@
   <div class="param-card" id="pc-crowding" style="animation-delay:.06s">
     <div class="param-header">
       <span class="param-name">Crowding / Spacing</span>
-      <span class="param-weight">×1</span>
     </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('crowding',1,this)"><div class="seg-value">1</div><div class="seg-desc">≤3 mm</div></button>
@@ -110,7 +111,6 @@
   <div class="param-card" id="pc-rotation" style="animation-delay:.08s">
     <div class="param-header">
       <span class="param-name">Rotation</span>
-      <span class="param-weight">×1.5</span>
     </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('rotation',1,this)"><div class="seg-value">1</div><div class="seg-desc">&lt;15°</div></button>
@@ -119,58 +119,75 @@
     </div>
   </div>
 
-  <div class="param-card" id="pc-movement" style="animation-delay:.10s">
+  <div class="param-card" id="pc-overjet" style="animation-delay:.10s">
     <div class="param-header">
-      <span class="param-name">Movement Type</span>
-      <span class="param-weight">×2</span>
+      <span class="param-name">Overjet</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('movement',1,this)"><div class="seg-value">1</div><div class="seg-desc">Tipping</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('movement',2,this)"><div class="seg-value">2</div><div class="seg-desc">Controlled / Bodily</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('movement',3,this)"><div class="seg-value">3</div><div class="seg-desc">Root / Vertical</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('overjet',1,this)"><div class="seg-value">1</div><div class="seg-desc">1–3 mm</div></button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('overjet',2,this)"><div class="seg-value">2</div><div class="seg-desc">4–6 mm</div></button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('overjet',3,this)"><div class="seg-value">3</div><div class="seg-desc">&gt;6 mm / Reverse</div></button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-bite" style="animation-delay:.12s">
+  <div class="param-card" id="pc-overbite" style="animation-delay:.12s">
     <div class="param-header">
-      <span class="param-name">Bite</span>
-      <span class="param-weight">×2</span>
+      <span class="param-name">Overbite</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('bite',1,this)"><div class="seg-value">1</div><div class="seg-desc">Class I</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('bite',2,this)"><div class="seg-value">2</div><div class="seg-desc">Deep / Open Bite</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('bite',3,this)"><div class="seg-value">3</div><div class="seg-desc">Class II/III / Crossbite</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('overbite',1,this)"><div class="seg-value">1</div><div class="seg-desc">Normal</div></button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('overbite',2,this)"><div class="seg-value">2</div><div class="seg-desc">Deep / Mild Open</div></button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('overbite',3,this)"><div class="seg-value">3</div><div class="seg-desc">Severe</div></button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-aux" style="animation-delay:.14s">
+  <div class="param-card" id="pc-sagittal" style="animation-delay:.13s">
     <div class="param-header">
-      <span class="param-name">Auxiliaries</span>
-      <span class="param-weight">×1</span>
+      <span class="param-name">Sagittal</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('aux',1,this)"><div class="seg-value">1</div><div class="seg-desc">None</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('aux',2,this)"><div class="seg-value">2</div><div class="seg-desc">Attachments</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('aux',3,this)"><div class="seg-value">3</div><div class="seg-desc">Elastics / TAD</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('sagittal',1,this)"><div class="seg-value">1</div><div class="seg-desc">Class I</div></button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('sagittal',2,this)"><div class="seg-value">2</div><div class="seg-desc">Mild II / III</div></button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('sagittal',3,this)"><div class="seg-value">3</div><div class="seg-desc">Full II / III</div></button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-ipr" style="animation-delay:.16s">
+  <div class="param-card" id="pc-transverse" style="animation-delay:.14s">
     <div class="param-header">
-      <span class="param-name">IPR / Extraction</span>
-      <span class="param-weight">×2</span>
+      <span class="param-name">Transverse</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('ipr',1,this)"><div class="seg-value">1</div><div class="seg-desc">None</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('ipr',2,this)"><div class="seg-value">2</div><div class="seg-desc">Mild IPR</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('ipr',3,this)"><div class="seg-value">3</div><div class="seg-desc">Extraction / Heavy IPR</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('transverse',1,this)"><div class="seg-value">1</div><div class="seg-desc">None</div></button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('transverse',2,this)"><div class="seg-value">2</div><div class="seg-desc">Mild Crossbite</div></button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('transverse',3,this)"><div class="seg-value">3</div><div class="seg-desc">Multiple / Segment</div></button>
+    </div>
+  </div>
+
+  <div class="param-card" id="pc-asymmetry" style="animation-delay:.16s">
+    <div class="param-header">
+      <span class="param-name">Asymmetry</span>
+    </div>
+    <div class="seg-group">
+      <button class="seg-btn" data-val="1" onclick="selectParam('asymmetry',1,this)"><div class="seg-value">1</div><div class="seg-desc">None</div></button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('asymmetry',2,this)"><div class="seg-value">2</div><div class="seg-desc">Mild</div></button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('asymmetry',3,this)"><div class="seg-value">3</div><div class="seg-desc">Significant</div></button>
+    </div>
+  </div>
+
+  <div class="param-card" id="pc-eruption" style="animation-delay:.17s">
+    <div class="param-header">
+      <span class="param-name">Eruption</span>
+    </div>
+    <div class="seg-group">
+      <button class="seg-btn" data-val="1" onclick="selectParam('eruption',1,this)"><div class="seg-value">1</div><div class="seg-desc">Fully Erupted</div></button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('eruption',2,this)"><div class="seg-value">2</div><div class="seg-desc">Partially Erupted</div></button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('eruption',3,this)"><div class="seg-value">3</div><div class="seg-desc">Impacted</div></button>
     </div>
   </div>
 
   <div class="param-card" id="pc-compliance" style="animation-delay:.18s">
     <div class="param-header">
       <span class="param-name">Compliance</span>
-      <span class="param-weight">×1</span>
     </div>
     <div class="seg-group">
       <button class="seg-btn" data-val="1" onclick="selectParam('compliance',1,this)"><div class="seg-value">1</div><div class="seg-desc">Good</div></button>
@@ -179,56 +196,22 @@
     </div>
   </div>
 
-  <!-- ── Predictability Penalties ── -->
-  <div class="section-label" style="margin-top:5px">Predictability Penalties (+2 each)</div>
-  <div class="card" style="animation-delay:.20s">
-    <div class="penalty-grid">
-      <div class="penalty-chip" id="pen-intrusion" onclick="togglePenalty('intrusion',this)">
-        <div class="penalty-chip-label">Intrusion / Extrusion</div>
-        <div class="penalty-chip-val">+2 pts</div>
-      </div>
-      <div class="penalty-chip" id="pen-root" onclick="togglePenalty('root',this)">
-        <div class="penalty-chip-label">Root Movement</div>
-        <div class="penalty-chip-val">+2 pts</div>
-      </div>
-      <div class="penalty-chip" id="pen-canine" onclick="togglePenalty('canine',this)">
-        <div class="penalty-chip-label">Canine Rotation &gt;20°</div>
-        <div class="penalty-chip-val">+2 pts</div>
-      </div>
-      <div class="penalty-chip" id="pen-impaction" onclick="togglePenalty('impaction',this)">
-        <div class="penalty-chip-label">Impaction</div>
-        <div class="penalty-chip-val">+2 pts</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Advanced Auxiliaries ── -->
-  <div class="section-label" style="margin-top:5px">Advanced Auxiliaries</div>
-  <div class="card" style="animation-delay:.21s">
-    <div class="aux-grid">
-      <div class="aux-chip" id="aux-mad" onclick="toggleAux('mad',this)">
-        <div class="aux-chip-label">Mandibular Advancement</div>
-        <div class="aux-chip-sub">MAD Device</div>
-      </div>
-      <div class="aux-chip" id="aux-tads" onclick="toggleAux('tads',this)">
-        <div class="aux-chip-label">TADs</div>
-        <div class="aux-chip-sub">Temporary Anchorage</div>
-      </div>
-    </div>
-  </div>
-
   <!-- ── Case Severity Output ── -->
   <div class="section-label" style="margin-top:4px">Case Severity</div>
-  <div class="severity-card" id="severity-result" style="animation-delay:.22s">
+  <div class="severity-card" id="severity-result" style="animation-delay:.23s">
     <div>
       <div class="severity-tag" id="sev-tag">Awaiting Score</div>
       <div class="severity-title" id="sev-title">—</div>
-      <div class="severity-desc" id="sev-desc">Complete all 7 parameters to classify</div>
+      <div class="severity-desc" id="sev-desc">Complete all 9 parameters to classify</div>
     </div>
     <div class="sev-bubble">
       <div class="sev-score-num" id="sev-score-num">—</div>
       <div class="sev-score-lbl">Score</div>
     </div>
+  </div>
+
+  <!-- ── Treatment Info ── -->
+  <div id="treatment-info" style="display:none; margin-top:12px; padding:12px; background:var(--surface); border-radius:8px; font-size:13px; line-height:1.6; border-left:3px solid var(--primary);">
   </div>
 
   <!-- ── Treatment Options ── -->
@@ -269,13 +252,13 @@
     </div>
 
     <div class="tx-card invis" id="tx-invis" onclick="togglePlan('invis',this)" style="animation-delay:.30s">
-      <div class="tx-indicator" id="txi-invis" style="border-color:var(--invis)">✓</div>
-      <div class="tx-tier">Invisalign®</div>
+      <div class="tx-indicator" id="txi-invis">✓</div>
+      <div class="tx-tier">Premium</div>
       <div class="tx-name">Invisalign</div>
-      <div class="tx-case">Brand aligner</div>
+      <div class="tx-case">All complexities</div>
       <div class="tx-price placeholder" id="txp-invis">Score case first</div>
       <div class="tx-plan-badge tx-plan-invis" id="tx-invis-plan">—</div>
-      <div class="tx-disclaimer">Final plan depends on ClinCheck®</div>
+      <ul class="tx-features"><li>Global brand</li><li>Highest predictability</li><li>Advanced attachments</li></ul>
     </div>
   </div>
 
@@ -341,13 +324,16 @@
         </div>
       </div>
 
+      <!-- Treatment Estimate -->
+      <div id="sc-tx-estimate" style="display:none"></div>
+
       <!-- Treatment option cards -->
       <div class="sc-section-lbl">Treatment Options</div>
       <div class="sc-tx-grid" id="sc-tx-grid">
         <div class="sc-no-plans" style="grid-column:1/-1">No plans selected</div>
       </div>
 
-      <!-- Advanced auxiliaries (visible only when selected) -->
+      <!-- Selected auxiliaries -->
       <div class="sc-aux-tags" id="sc-aux-tags" style="display:none"></div>
 
       <!-- Static phone CTA -->
@@ -360,7 +346,7 @@
 
     <!-- Modal action buttons -->
     <div class="modal-actions">
-      <button class="btn-primary" id="btn-share" onclick="shareOrDownload()">
+      <button class="btn-primary" id="btn-share" onclick="downloadPDF()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
              stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
@@ -377,6 +363,10 @@
 
 <!-- App logic -->
 <script src="app.js"></script>
+
+<!-- PDF export libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 </body>
 </html>

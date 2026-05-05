@@ -28,31 +28,40 @@ const CONFIG = {
 
   // ── Scoring thresholds ───────────────────────────────
   scoring: {
-    mildMax:     13,    // score ≤ this → Mild
-    moderateMax: 19.5,  // score ≤ this → Moderate  (above = Severe)
-    penaltyPoints: 2    // points added per selected penalty
+    mildMax:     14,     // score ≤ this → Mild
+    moderateMax: 24,     // score ≤ this → Moderate  (above = Severe)
+    penaltyPoints: 2     // points added per selected penalty
+  },
+
+  // ── Treatment calculation constants ────────────────
+  treatment: {
+    exponent: 1.15,
+    variability: 1.3,
+    interactionBoost: 1.1
   },
 
   // ── Parameter weights (multipliers) ─────────────────
   weights: {
-    crowding:   1,
+    crowding:   2,
     rotation:   1.5,
-    movement:   2,
-    bite:       2,
-    aux:        1,
-    ipr:        2,
+    overjet:    2,
+    overbite:   2,
+    sagittal:   2,
+    transverse: 1.5,
+    asymmetry:  1,
+    eruption:   1.5,
     compliance: 1
   },
 
   // ── Severity card short descriptions ─────────────────
   severityDescriptions: {
-    mild:     'Straightforward · Good predictability · 8-10 months',
-    moderate: 'Standard complexity · 1–2 refinements · 10-12 months',
-    severe:   'Advanced case · Multiple stages · 12-18 months'
+    mild:     'Straightforward · Good predictability',
+    moderate: 'Standard complexity · 1–2 refinements',
+    severe:   'Advanced case · Multiple stages'
   },
 
   // ── Score banner breakdown label ─────────────────────
-  scoreBannerLabel: '≤13 Mild · 13.5–19.5 Mod · ≥20 Severe',
+  scoreBannerLabel: '≤14 Mild · 15–24 Moderate · ≥25 Severe',
 
   // ── Pricing matrix (changes per severity) ────────────
   pricing: {
@@ -92,33 +101,24 @@ const S = {
   // Clinical param values (null = not yet selected)
   crowding:   null,
   rotation:   null,
-  movement:   null,
-  bite:       null,
-  aux:        null,
-  ipr:        null,
+  overjet:    null,
+  overbite:   null,
+  sagittal:   null,
+  transverse: null,
+  asymmetry:  null,
+  eruption:   null,
   compliance: null,
-
-  // Predictability penalties (each adds CONFIG.scoring.penaltyPoints)
-  penalties: {
-    intrusion: false,
-    root:      false,
-    canine:    false,
-    impaction: false
-  },
-
-  // Advanced auxiliaries — display only, no score impact
-  auxDevices: {
-    mad:  false,
-    tads: false
-  },
 
   severity:    null,   // 'mild' | 'moderate' | 'severe' | null
   plans:       [],     // ordered array of selected plan keys
   logoDataURL: null    // base64 if user uploads a custom logo
 };
 
+// Auxiliary selection state
+let selectedAux = [];
+
 // Ordered list used for iteration and progress dots
-const PARAMS = ['crowding','rotation','movement','bite','aux','ipr','compliance'];
+const PARAMS = ['crowding','rotation','overjet','overbite','sagittal','transverse','asymmetry','eruption','compliance'];
 
 /* ═══════════════════════════════════════════════════════
    DOM REFERENCES — cached once on load
@@ -139,13 +139,16 @@ const DOM = {
 
   // Progress bar
   progressLabel:  document.getElementById('progress-label'),
-  progDots:       PARAMS.map((_, i) => document.getElementById('pd' + i)),
+  progDots:       PARAMS.map((_, i) => document.getElementById(`pd${i}`)),
 
   // Treatment option price elements
   txBudgetLabel:  document.getElementById('tx-budget-plan'),
   txAceLabel:     document.getElementById('tx-ace-plan'),
   txLuxeLabel:   document.getElementById('tx-luxe-plan'),
   txInvisLabel:   document.getElementById('tx-invis-plan'),
+
+  // Treatment info display
+  treatmentInfo:  document.getElementById('treatment-info'),
 
   // Summary modal
   summaryModal:   document.getElementById('summary-modal'),
@@ -163,7 +166,6 @@ const DOM = {
   scSevDesc:      document.getElementById('sc-sev-desc'),
   scSevNum:       document.getElementById('sc-sev-num'),
   scTxGrid:       document.getElementById('sc-tx-grid'),
-  scAuxTags:      document.getElementById('sc-aux-tags'),
   btnShare:       document.getElementById('btn-share')
 };
 
@@ -185,26 +187,129 @@ function scoreToCategory(score) {
    SCORING ENGINE
 ════════════════════════════════════════════════════════ */
 
-/** Weighted sum of all param values + penalty points */
+/** Weighted sum of all param values */
 function calculateScore() {
-  const base         = PARAMS.reduce((sum, p) => sum + (S[p] * CONFIG.weights[p]), 0);
-  const penaltyCount = Object.values(S.penalties).filter(Boolean).length;
-  return base + (penaltyCount * CONFIG.scoring.penaltyPoints);
+  return PARAMS.reduce((sum, p) => sum + (S[p] * CONFIG.weights[p]), 0);
 }
 
 /**
  * Override rules applied on top of the numeric score:
- *   ipr=3  (Extraction)       → always Severe
- *   bite=3 (Class II/III)     → always Severe
- *   aux=3  (Elastics/TAD)     → minimum Moderate
+ *   sagittal=3 (Full Class II/III)  → always Severe
+ *   eruption=3 (Impaction)          → always Severe
+ *   overjet=3 + overbite=3          → always Severe
+ *   overjet≥2 or transverse≥2       → minimum Moderate
  */
 function determineSeverity(score) {
-  if (S.ipr === 3 || S.bite === 3) return 'severe';
-  if (S.aux === 3) {
+  // Severe conditions
+  if (S.sagittal === 3) return 'severe';
+  if (S.eruption === 3) return 'severe';
+  if (S.overjet === 3 && S.overbite === 3) return 'severe';
+
+  // Minimum Moderate
+  if (S.overjet === 2 || S.transverse === 2) {
     const base = scoreToCategory(score);
     return base === 'mild' ? 'moderate' : base;
   }
+
   return scoreToCategory(score);
+}
+
+/* ═══════════════════════════════════════════════════════
+   TREATMENT CALCULATORS
+════════════════════════════════════════════════════════ */
+
+/** Predicts required auxiliaries based on case parameters */
+function predictAuxiliaries() {
+  const aux = [];
+  if (S.crowding === 2) aux.push('IPR');
+  if (S.crowding === 3) aux.push('IPR / Expansion');
+  if (S.rotation === 3) aux.push('Attachments');
+  if (S.overjet >= 2 || S.sagittal >= 2) aux.push('Elastics');
+  if (S.transverse >= 2) aux.push('Expansion');
+  if (S.overbite === 3) aux.push('Bite ramps');
+  if (S.eruption === 3) aux.push('Surgical exposure / TAD');
+  return aux;
+}
+
+/** Toggle auxiliary selection */
+function toggleSuggestedAux(aux) {
+  if (selectedAux.includes(aux)) {
+    selectedAux = selectedAux.filter(a => a !== aux);
+  } else {
+    selectedAux.push(aux);
+  }
+  recalculate();
+  persistState();
+}
+
+/** Estimates aligner count & duration range based on complexity load */
+function calculateTreatment() {
+  let load = 0;
+  load += S.crowding * 2;
+  load += S.rotation * 1.5;
+  load += S.overjet * 2;
+  load += S.overbite * 2;
+  load += S.sagittal * 2;
+  load += S.transverse * 1.5;
+  load += S.asymmetry * 1;
+
+  let base = Math.pow(load, CONFIG.treatment.exponent);
+  let minAligners = Math.round(8 + base);
+  let maxAligners = Math.round(minAligners * CONFIG.treatment.variability);
+
+  // Interaction effects
+  if (S.transverse >= 2 && S.rotation >= 2) {
+    minAligners = Math.round(minAligners * CONFIG.treatment.interactionBoost);
+    maxAligners = Math.round(maxAligners * CONFIG.treatment.interactionBoost);
+  }
+
+  if (S.overbite === 3 && S.crowding >= 2) {
+    minAligners = Math.round(minAligners * CONFIG.treatment.interactionBoost);
+    maxAligners = Math.round(maxAligners * CONFIG.treatment.interactionBoost);
+  }
+
+  if (S.overbite === 3) {
+    minAligners = Math.max(minAligners, 20);
+    maxAligners = Math.max(maxAligners, 28);
+  }
+
+  if (S.eruption === 3) {
+    minAligners = Math.max(minAligners, 35);
+    maxAligners = Math.max(maxAligners, 50);
+  }
+
+  let minMonths = Math.round((minAligners * 10) / 30);
+  let maxMonths = Math.round((maxAligners * 10) / 30);
+
+  if (S.compliance === 3) {
+    maxMonths = Math.round(maxMonths * CONFIG.treatment.variability);
+  }
+
+  return {
+    aligners: `${minAligners}–${maxAligners}`,
+    duration: `${minMonths}–${maxMonths}`
+  };
+}
+
+/** Calculates treatment confidence (0–100%) based on risk factors */
+function calculateConfidence() {
+  let confidence = 100;
+
+  if (S.rotation === 3) confidence -= 10;
+  if (S.overbite === 3) confidence -= 10;
+  if (S.transverse === 3) confidence -= 10;
+  if (S.eruption === 3) confidence -= 15;
+  if (S.compliance === 3) confidence -= 10;
+
+  const risks = [
+    S.rotation === 3,
+    S.overbite === 3,
+    S.transverse === 3
+  ].filter(Boolean).length;
+
+  if (risks >= 2) confidence -= 10;
+
+  return Math.max(60, confidence);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -235,8 +340,9 @@ function updateSeverityCard(cat, score) {
   if (!cat) {
     DOM.sevTag.textContent      = 'Awaiting Score';
     DOM.sevTitle.textContent    = '—';
-    DOM.sevDesc.textContent     = 'Complete all 7 parameters to classify';
+    DOM.sevDesc.textContent     = 'Complete all 9 parameters to classify';
     DOM.sevScoreNum.textContent = '—';
+    if (DOM.treatmentInfo) DOM.treatmentInfo.style.display = 'none';
     return;
   }
   DOM.sevTag.textContent      = 'Case Severity';
@@ -270,12 +376,12 @@ function updatePrices(cat) {
   if (DOM.txInvisLabel) DOM.txInvisLabel.textContent = m.invis.plan;
 }
 
-/** Fills/clears the 7 progress dots */
+/** Fills/clears the progress dots */
 function updateProgress(filledCount) {
   DOM.progDots.forEach((dot, i) => {
     if (dot) dot.classList.toggle('done', i < filledCount);
   });
-  DOM.progressLabel.textContent = `${filledCount} of 7 parameters selected`;
+  DOM.progressLabel.textContent = `${filledCount} of ${PARAMS.length} parameters selected`;
 }
 
 /** Syncs selected state and order numbers on treatment cards */
@@ -302,7 +408,7 @@ function recalculate() {
   const filled = PARAMS.filter(p => S[p] !== null);
   updateProgress(filled.length);
 
-  if (filled.length < 7) {
+  if (filled.length < PARAMS.length) {
     clearScoreBanner();
     updateSeverityCard(null, null);
     updatePrices(null);
@@ -313,11 +419,36 @@ function recalculate() {
   const score = calculateScore();
   const cat   = determineSeverity(score);
   const sr    = Math.round(score * 10) / 10;
+  const treatment = calculateTreatment();
+  const aux = predictAuxiliaries();
+  const confidence = calculateConfidence();
+
+  // Auto-select primary auxiliaries if none selected
+  if (selectedAux.length === 0 && aux.length > 0) {
+    selectedAux = aux.slice(0, 2);
+  }
 
   S.severity = cat;
   updateScoreBanner(sr, cat);
   updateSeverityCard(cat, sr);
   updatePrices(cat);
+
+  if (DOM.treatmentInfo) {
+    DOM.treatmentInfo.style.display = 'block';
+    DOM.treatmentInfo.innerHTML = `
+      <strong>Aligners:</strong> ${treatment.aligners}<br>
+      <strong>Duration:</strong> ${treatment.duration} months<br>
+      <strong>Confidence:</strong> ${confidence}%<br><br>
+      <strong>Treatment Estimate</strong>
+      <div class="aux-pill-container">
+        ${aux.map(a => `
+          <div class="aux-pill ${selectedAux.includes(a) ? 'active' : ''}" onclick="toggleSuggestedAux('${a}')">
+            ${a}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -331,21 +462,6 @@ function selectParam(param, val, btn) {
   btn.classList.add('active');
   document.getElementById('pc-' + param)?.classList.add('selected');
   recalculate();
-  persistState();
-}
-
-/** Penalty chip tap */
-function togglePenalty(key, el) {
-  S.penalties[key] = !S.penalties[key];
-  el.classList.toggle('active', S.penalties[key]);
-  recalculate();
-  persistState();
-}
-
-/** Advanced auxiliary chip tap */
-function toggleAux(key, el) {
-  S.auxDevices[key] = !S.auxDevices[key];
-  el.classList.toggle('active', S.auxDevices[key]);
   persistState();
 }
 
@@ -434,7 +550,31 @@ function populateSummaryCard() {
   DOM.scSevNum.textContent     = (cat && score !== '—') ? score : '—';
 
   renderSummaryPlans(cat);
-  renderSummaryAuxTags();
+
+  // Treatment Estimate
+  if (cat) {
+    const treatment = calculateTreatment();
+    const confidence = calculateConfidence();
+    const txEstimate = document.getElementById('sc-tx-estimate');
+    if (txEstimate) {
+      const estimateBlock = `
+        <div class="sc-section-lbl">Treatment Estimate</div>
+        <div class="sc-aux-tags" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <span class="sc-aux-tag">Aligners: ${treatment.aligners}</span>
+          <span class="sc-aux-tag">Duration: ${treatment.duration} months</span>
+          <span class="sc-aux-tag">Confidence: ${confidence}%</span>
+        </div>
+        ${selectedAux.length > 0 ? `
+          <div class="sc-section-lbl" style="margin-top:8px;">Auxiliaries</div>
+          <div class="sc-aux-tags" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            ${selectedAux.map(a => `<span class="sc-aux-tag">${a}</span>`).join('')}
+          </div>
+        ` : ''}
+      `;
+      txEstimate.innerHTML = estimateBlock;
+      txEstimate.style.display = 'block';
+    }
+  }
 
   // Phone CTA (from CONFIG)
   const phoneCta = document.querySelector('.sc-phone-cta');
@@ -472,18 +612,54 @@ function renderSummaryPlans(cat) {
   }).join('');
 }
 
-/** Shows aux device tags in summary (only if any selected) */
-function renderSummaryAuxTags() {
-  const active = [];
-  if (S.auxDevices.mad)      active.push('MAD Device');
-  if (S.auxDevices.tads)     active.push('TADs');
-  if (S.penalties.impaction) active.push('Impaction');
-  if (active.length) {
-    DOM.scAuxTags.style.display = 'flex';
-    DOM.scAuxTags.innerHTML = active.map(a => `<span class="sc-aux-tag">⚙️ ${a}</span>`).join('');
-  } else {
-    DOM.scAuxTags.style.display = 'none';
-  }
+
+/* ═══════════════════════════════════════════════════════
+   PDF EXPORT
+════════════════════════════════════════════════════════ */
+
+/** Generates and downloads single-page mobile-friendly PDF from summary card */
+async function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+
+  const element = document.getElementById('summary-card');
+
+  const canvas = await html2canvas(element, {
+    scale: 2.5,
+    useCORS: true,
+    backgroundColor: "#ffffff"
+  });
+
+  const imgData = canvas.toDataURL('image/png');
+
+  // MOBILE-FIRST PAGE SIZE
+  const pdfWidth = 180;
+  const pdfHeight = 300;
+
+  const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
+
+  const margin = 8;
+
+  const availableWidth = pdfWidth - (margin * 2);
+  const availableHeight = pdfHeight - (margin * 2);
+
+  // SCALE TO FIT HEIGHT
+  const ratio = Math.min(
+    availableWidth / canvas.width,
+    availableHeight / canvas.height
+  );
+
+  const imgWidth = canvas.width * ratio;
+  const imgHeight = canvas.height * ratio;
+
+  const x = (pdfWidth - imgWidth) / 2;
+  const y = (pdfHeight - imgHeight) / 2;
+
+  pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+
+  const patientName =
+    document.getElementById('patient-name')?.value || 'Patient';
+
+  pdf.save(`${patientName}_Aligner_Report.pdf`);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -534,8 +710,7 @@ async function shareOrDownload() {
 function resetAll() {
   // Clear state
   PARAMS.forEach(k => S[k] = null);
-  Object.keys(S.penalties).forEach(k  => S.penalties[k]  = false);
-  Object.keys(S.auxDevices).forEach(k => S.auxDevices[k] = false);
+  selectedAux   = [];
   S.severity    = null;
   S.plans       = [];
   S.logoDataURL = null;
@@ -543,8 +718,6 @@ function resetAll() {
   // Clear UI selections
   document.querySelectorAll('.seg-btn').forEach(b    => b.classList.remove('active'));
   document.querySelectorAll('.param-card').forEach(c  => c.classList.remove('selected'));
-  document.querySelectorAll('.penalty-chip').forEach(c => c.classList.remove('active'));
-  document.querySelectorAll('.aux-chip').forEach(c    => c.classList.remove('active'));
   document.querySelectorAll('.tx-card').forEach(c     => c.classList.remove('selected'));
 
   // Clear patient fields
@@ -578,8 +751,7 @@ function persistState() {
   try {
     localStorage.setItem(CONFIG.clinic.storageKey, JSON.stringify({
       params:      Object.fromEntries(PARAMS.map(p => [p, S[p]])),
-      penalties:   { ...S.penalties },
-      auxDevices:  { ...S.auxDevices },
+      selectedAux: [ ...selectedAux ],
       plans:       [ ...S.plans ],
       logoDataURL: S.logoDataURL,
       patient: {
@@ -608,22 +780,9 @@ function loadPersistedState() {
       });
     }
 
-    // Penalties
-    if (d.penalties) {
-      Object.keys(d.penalties).forEach(k => {
-        if (!(k in S.penalties)) return;
-        S.penalties[k] = d.penalties[k];
-        if (d.penalties[k]) document.getElementById('pen-' + k)?.classList.add('active');
-      });
-    }
-
-    // Aux devices
-    if (d.auxDevices) {
-      Object.keys(d.auxDevices).forEach(k => {
-        if (!(k in S.auxDevices)) return;
-        S.auxDevices[k] = d.auxDevices[k];
-        if (d.auxDevices[k]) document.getElementById('aux-' + k)?.classList.add('active');
-      });
+    // Selected auxiliaries
+    if (Array.isArray(d.selectedAux)) {
+      selectedAux = [...d.selectedAux];
     }
 
     // Plans

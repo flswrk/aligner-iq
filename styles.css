@@ -729,11 +729,12 @@ select.field-input { cursor: pointer; }
    SUMMARY CARD  (html2canvas screenshot target)
 ───────────────────────────────────────────── */
 #summary-card {
-  margin: 13px;
-  background: var(--bg);
+  max-width: 560px;
+  margin: 0 auto;
+  background: #ffffff;
   border-radius: var(--radius);
   overflow: hidden;
-  padding: 4px;
+  padding: 12px;
 }
 
 .sc-section-lbl {
@@ -778,6 +779,7 @@ select.field-input { cursor: pointer; }
 }
 .sc-patient-name { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.1; }
 .sc-patient-meta { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+
 
 .sc-sev-pill {
   padding: 4px 10px; border-radius: 20px; flex-shrink: 0;
