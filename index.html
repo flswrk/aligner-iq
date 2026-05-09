@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Flosswork - Aligner Classifier</title>
 
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -14,9 +17,263 @@
 
 <!-- html2canvas for summary image export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+  /* ── V7.7 param group divider ── */
+  .param-group-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 10px 2px 4px;
+  }
+  /* ── Active aux tag in summary ── */
+  .sc-aux-tag.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  /* ── Score banner label tweak for MDS ── */
+  .score-label-text-mds { font-size: 10px; font-weight: 600; opacity: 0.55; margin-bottom: 1px; }
+
+  /* ── Auth screen ── */
+  #auth-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; padding: 32px 24px;
+  }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px 28px; width: 100%; max-width: 380px;
+    box-shadow: var(--shadow-lg); text-align: center;
+  }
+  .auth-logo {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--accent); color: #fff;
+    font-family: 'DM Serif Display', serif; font-size: 24px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .auth-title { font-family: 'DM Serif Display', serif; font-size: 24px; letter-spacing: -.5px; margin-bottom: 4px; }
+  .auth-sub   { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+  .auth-divider {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--text-tertiary); font-size: 11px; margin: 18px 0;
+  }
+  .auth-divider::before, .auth-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .auth-input {
+    width: 100%; padding: 12px 14px; border: 1px solid var(--border);
+    border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+    background: var(--surface2); color: var(--text-primary);
+    margin-bottom: 10px; outline: none; transition: border-color .18s;
+  }
+  .auth-input:focus { border-color: var(--accent); }
+  .btn-auth-google {
+    width: 100%; padding: 13px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: background .18s; color: var(--text-primary);
+  }
+  .btn-auth-google:hover { background: var(--surface2); }
+  .btn-auth-magic {
+    width: 100%; padding: 13px; border-radius: 10px;
+    border: none; background: var(--accent); color: #fff;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: opacity .18s; margin-top: 4px;
+  }
+  .btn-auth-magic:hover { opacity: .88; }
+  .btn-auth-magic:disabled { opacity: .55; cursor: not-allowed; }
+  .auth-forgot { text-align: right; margin: -4px 0 10px; }
+  .auth-forgot-btn {
+    background: none; border: none; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; color: var(--text-tertiary); cursor: pointer; padding: 0;
+  }
+  .auth-forgot-btn:hover { color: var(--accent); text-decoration: underline; }
+  .auth-error {
+    font-size: 12px; color: var(--severe); background: var(--severe-bg);
+    border: 1px solid var(--severe-light); border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 10px; display: none; text-align: left;
+  }
+  .auth-success {
+    font-size: 12px; color: var(--mild); background: var(--mild-bg);
+    border: 1px solid var(--mild-light); border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 10px; display: none; text-align: left;
+  }
+  .auth-toggle {
+    margin-top: 18px; font-size: 13px; color: var(--text-tertiary);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .auth-toggle-btn {
+    background: none; border: none; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 600; color: var(--accent);
+    cursor: pointer; padding: 0; text-decoration: underline;
+  }
+  .auth-magic-sent {
+    display: none; font-size: 13px; color: var(--mild);
+    background: var(--mild-bg); border: 1px solid var(--mild-light);
+    border-radius: 8px; padding: 10px 14px; margin-top: 8px;
+  }
+
+  /* ── User chip & past cases button in header ── */
+  .btn-past-cases {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 11px; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: all var(--transition);
+  }
+  .btn-past-cases:hover { background: var(--bg); color: var(--text-primary); }
+  .user-chip {
+    font-size: 11px; color: var(--text-tertiary);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 10px; white-space: nowrap;
+    flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  .user-chip:hover { color: var(--severe); }
+
+  /* ── Save badge ── */
+  .save-badge {
+    display: none; font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px; margin-left: 8px;
+  }
+  #save-badge-main { display: inline-block; } /* always visible on input page */
+  .save-badge.not-saved { background: #FFF3CD; color: #856404; }
+  .save-badge.saving    { background: var(--moderate-light);  color: var(--moderate); }
+  .save-badge.saved     { background: var(--mild-light);      color: var(--mild); }
+  .save-badge.error     { background: var(--severe-light);    color: var(--severe); }
+
+  /* ── Past Cases Panel ── */
+  #past-cases-panel {
+    display: none; position: fixed; inset: 0; z-index: 9000;
+    flex-direction: column; background: var(--bg);
+  }
+  .pc-header {
+    background: rgba(255,255,255,.94); border-bottom: 1px solid var(--border);
+    padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; backdrop-filter: blur(16px);
+  }
+  .pc-header-title { font-size: 16px; font-weight: 700; letter-spacing: -.3px; }
+  .pc-close {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--surface2);
+    border: 1px solid var(--border); display: flex; align-items: center;
+    justify-content: center; cursor: pointer; font-size: 14px; color: var(--text-secondary);
+  }
+  .pc-list { flex: 1; overflow-y: auto; padding: 16px 15px; }
+  .pc-loading, .pc-empty {
+    font-size: 13px; color: var(--text-tertiary); text-align: center; padding: 40px 0;
+  }
+  .pc-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+    cursor: pointer; transition: box-shadow var(--transition), transform var(--transition);
+  }
+  .pc-card:active { transform: scale(.98); }
+  .pc-card:hover  { box-shadow: var(--shadow); }
+  .pc-card-top    { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .pc-name        { font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .pc-meta        { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+  .pc-sev-pill    { font-size: 9.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; flex-shrink: 0; }
+  .pc-sev-pill.mild     { background: var(--mild-light);     color: var(--mild); }
+  .pc-sev-pill.moderate { background: var(--moderate-light); color: var(--moderate); }
+  .pc-sev-pill.severe   { background: var(--severe-light);   color: var(--severe); }
+  .pc-sev-pill.default  { background: var(--border);         color: var(--text-tertiary); }
+  .pc-scores { display: flex; gap: 16px; font-size: 11px; color: var(--text-secondary); }
+  .pc-scores strong { color: var(--text-primary); font-weight: 700; }
+  .pc-delete {
+    width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text-tertiary); font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; transition: background var(--transition), color var(--transition);
+  }
+  .pc-delete:hover { background: var(--severe-light); color: var(--severe); border-color: var(--severe-light); }
+  .pc-share {
+    height: 26px; padding: 0 10px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text-secondary); font-size: 11px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; transition: background var(--transition), color var(--transition);
+  }
+  .pc-share:hover { background: var(--mild-light); color: var(--mild); border-color: var(--mild-light); }
+  .pc-filter-select {
+    font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text-secondary);
+    cursor: pointer; margin-left: auto;
+  }
+  .pc-sort { display: flex; gap: 5px; margin-left: 8px; }
+  .pc-sort-btn {
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface2); color: var(--text-secondary);
+    cursor: pointer; transition: all var(--transition);
+  }
+  .pc-sort-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+</style>
 </head>
 
 <body>
+
+<!-- ═══════════════════════════════════════════
+     AUTH SCREEN — shown until user signs in
+════════════════════════════════════════════ -->
+<div id="auth-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">F</div>
+    <div class="auth-title">AlignerIQ</div>
+    <div class="auth-sub" id="auth-sub">Flosswork Dental Clinic · Sign in to continue</div>
+
+    <input type="email"    class="auth-input" id="auth-email"    placeholder="Email address">
+    <input type="password" class="auth-input" id="auth-password" placeholder="Password">
+
+    <div class="auth-forgot"><button class="auth-forgot-btn" onclick="handleForgotPassword()">Forgot password?</button></div>
+
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-success" id="auth-success"></div>
+
+    <button class="btn-auth-magic" id="btn-auth-submit" onclick="handleAuthSubmit()">Sign In</button>
+
+    <div class="auth-toggle">
+      <span id="auth-toggle-text">Don't have an account?</span>
+      <button class="auth-toggle-btn" onclick="toggleAuthMode()">Sign Up</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PAST CASES PANEL — full-screen slide
+════════════════════════════════════════════ -->
+<div id="past-cases-panel">
+  <div class="pc-header">
+    <span class="pc-header-title">Past Cases</span>
+    <select class="pc-filter-select" id="pc-filter-select" onchange="filterPastCases(this.value)">
+      <option value="">All</option>
+      <option value="fresh">Fresh</option>
+      <option value="in-pipeline">In-pipeline</option>
+      <option value="needs-time">Needs time</option>
+      <option value="budget-issue">Budget issue</option>
+      <option value="not-responding">Not responding</option>
+      <option value="declined">Declined</option>
+      <option value="converted">Converted</option>
+    </select>
+    <div class="pc-sort">
+      <button class="pc-sort-btn active" id="pc-sort-date" onclick="sortPastCases('date')">Date</button>
+      <button class="pc-sort-btn" id="pc-sort-name" onclick="sortPastCases('name')">Name</button>
+    </div>
+    <div class="pc-close" onclick="closePastCases()">✕</div>
+  </div>
+  <div class="pc-list" id="past-cases-list">
+    <div class="pc-loading">Loading…</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     APP WRAPPER — hidden until auth passes
+════════════════════════════════════════════ -->
+<div id="app-wrapper" style="display:none">
 
 <!-- ═══════════════════════════════════════════
      HEADER — sticky, clinic branding + reset
@@ -31,14 +288,16 @@
 
     <div class="clinic-name-block">
       <span class="clinic-name-static">Flosswork Dental Clinic</span>
-      <span class="clinic-tagline-static">Dentistry redesigned</span>
+      <span class="clinic-tagline-static">Clearly Better.</span>
     </div>
   </div>
+  <button class="btn-past-cases" onclick="openPastCases()">📋 Past Cases</button>
+  <span class="user-chip" id="user-chip" onclick="signOut()" title="Click to sign out">—</span>
   <button class="btn-reset" onclick="resetAll()">↺ Reset</button>
 </header>
 
 <!-- ═══════════════════════════════════════════
-     STICKY PROGRESS BAR — 8 dots, one per param
+     STICKY PROGRESS BAR — 13 dots, one per param
 ════════════════════════════════════════════ -->
 <div class="progress-sticky">
   <div class="prog-dot" id="pd0"></div>
@@ -50,7 +309,12 @@
   <div class="prog-dot" id="pd6"></div>
   <div class="prog-dot" id="pd7"></div>
   <div class="prog-dot" id="pd8"></div>
-  <span class="prog-label" id="progress-label">0 of 9 parameters selected</span>
+  <div class="prog-dot" id="pd9"></div>
+  <div class="prog-dot" id="pd10"></div>
+  <div class="prog-dot" id="pd11"></div>
+  <div class="prog-dot" id="pd12"></div>
+  <span class="prog-label" id="progress-label">0 of 13 parameters selected</span>
+  <span class="save-badge" id="save-badge-main"></span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -58,15 +322,25 @@
 ════════════════════════════════════════════ -->
 <main class="main">
 
+  <!-- ── Conversion Status Pills ── -->
+  <div class="conv-status-row" id="conv-status-row">
+    <button type="button" class="conv-pill" data-value="fresh"          onclick="setConversionStatus('fresh')">Fresh</button>
+    <button type="button" class="conv-pill" data-value="in-pipeline"    onclick="setConversionStatus('in-pipeline')">In-pipeline</button>
+    <button type="button" class="conv-pill" data-value="needs-time"     onclick="setConversionStatus('needs-time')">Needs time</button>
+    <button type="button" class="conv-pill" data-value="budget-issue"   onclick="setConversionStatus('budget-issue')">Budget issue</button>
+    <button type="button" class="conv-pill" data-value="not-responding" onclick="setConversionStatus('not-responding')">Not responding</button>
+    <button type="button" class="conv-pill" data-value="declined"       onclick="setConversionStatus('declined')">Declined</button>
+    <button type="button" class="conv-pill" data-value="converted"      onclick="setConversionStatus('converted')">Converted</button>
+  </div>
+
   <!-- ── Score Banner ── -->
   <div class="score-banner">
     <div>
-      <div class="score-label-text">Weighted Score</div>
-      <div class="score-number" id="score-display">—</div>
+      <div class="score-label-text">Patient</div>
+      <div class="score-number" id="score-display" style="font-size:20px;letter-spacing:-.3px">—</div>
     </div>
     <div class="score-right">
       <div class="score-category" id="category-badge">Incomplete</div>
-      <div class="score-breakdown" id="score-breakdown">Fill all parameters</div>
     </div>
   </div>
 
@@ -74,9 +348,9 @@
   <div class="section-label">Patient Details</div>
   <div class="card" style="animation-delay:.04s">
     <div class="patient-grid">
-      <div class="field-group span-full">
+      <div class="field-group">
         <label class="field-label">Patient Name</label>
-        <input type="text" class="field-input" id="patient-name" placeholder="Full name" autocomplete="off">
+        <input type="text" class="field-input" id="patient-name" placeholder="Full name" autocomplete="off" oninput="document.getElementById('score-display').textContent = this.value.trim() || '—'">
       </div>
       <div class="field-group">
         <label class="field-label">Age</label>
@@ -91,108 +365,260 @@
           <option>Other</option>
         </select>
       </div>
+      <div class="field-group">
+        <label class="field-label">WhatsApp</label>
+        <input type="tel" class="field-input" id="patient-whatsapp" placeholder="+91 XXXXX XXXXX" autocomplete="off">
+      </div>
     </div>
   </div>
 
-  <!-- ── Clinical Parameters ── -->
+  <!-- ══════════════════════════════════════
+       CLINICAL PARAMETERS — V7.7 (13 total)
+  ═══════════════════════════════════════ -->
   <div class="section-label">Clinical Scoring</div>
 
-  <div class="param-card" id="pc-crowding" style="animation-delay:.06s">
+  <!-- GROUP: Crowding -->
+  <div class="param-group-label">Crowding</div>
+
+  <div class="param-card" id="pc-upperCrowding" style="animation-delay:.06s">
     <div class="param-header">
-      <span class="param-name">Crowding / Spacing</span>
+      <span class="param-name">Upper Crowding</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('crowding',1,this)"><div class="seg-value">1</div><div class="seg-desc">≤3 mm</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('crowding',2,this)"><div class="seg-value">2</div><div class="seg-desc">4–6 mm</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('crowding',3,this)"><div class="seg-value">3</div><div class="seg-desc">≥7 mm</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('upperCrowding',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">≤3 mm</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('upperCrowding',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">&gt;3–7 mm</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('upperCrowding',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">&gt;7 mm</div>
+      </button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-rotation" style="animation-delay:.08s">
+  <div class="param-card" id="pc-lowerCrowding" style="animation-delay:.07s">
     <div class="param-header">
-      <span class="param-name">Rotation</span>
+      <span class="param-name">Lower Crowding</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('rotation',1,this)"><div class="seg-value">1</div><div class="seg-desc">&lt;15°</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('rotation',2,this)"><div class="seg-value">2</div><div class="seg-desc">15–30°</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('rotation',3,this)"><div class="seg-value">3</div><div class="seg-desc">&gt;30°</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('lowerCrowding',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">≤3 mm</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('lowerCrowding',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">&gt;3–7 mm</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('lowerCrowding',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">&gt;7 mm</div>
+      </button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-overjet" style="animation-delay:.10s">
+  <!-- GROUP: Spacing -->
+  <div class="param-group-label">Spacing</div>
+
+  <div class="param-card" id="pc-upperSpacing" style="animation-delay:.08s">
     <div class="param-header">
-      <span class="param-name">Overjet</span>
+      <span class="param-name">Upper Spacing</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('overjet',1,this)"><div class="seg-value">1</div><div class="seg-desc">1–3 mm</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('overjet',2,this)"><div class="seg-value">2</div><div class="seg-desc">4–6 mm</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('overjet',3,this)"><div class="seg-value">3</div><div class="seg-desc">&gt;6 mm / Reverse</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('upperSpacing',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">≤2 mm</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('upperSpacing',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">&gt;2–5 mm</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('upperSpacing',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">&gt;5 mm</div>
+      </button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-overbite" style="animation-delay:.12s">
+  <div class="param-card" id="pc-lowerSpacing" style="animation-delay:.09s">
     <div class="param-header">
-      <span class="param-name">Overbite</span>
+      <span class="param-name">Lower Spacing</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('overbite',1,this)"><div class="seg-value">1</div><div class="seg-desc">Normal</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('overbite',2,this)"><div class="seg-value">2</div><div class="seg-desc">Deep / Mild Open</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('overbite',3,this)"><div class="seg-value">3</div><div class="seg-desc">Severe</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('lowerSpacing',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">≤2 mm</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('lowerSpacing',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">&gt;2–5 mm</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('lowerSpacing',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">&gt;5 mm</div>
+      </button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-sagittal" style="animation-delay:.13s">
+  <!-- GROUP: Rotation & Incisor -->
+  <div class="param-group-label">Rotation &amp; Incisor Position</div>
+
+  <div class="param-card" id="pc-rotationSeverity" style="animation-delay:.10s">
     <div class="param-header">
-      <span class="param-name">Sagittal</span>
+      <span class="param-name">Rotation Severity</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('sagittal',1,this)"><div class="seg-value">1</div><div class="seg-desc">Class I</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('sagittal',2,this)"><div class="seg-value">2</div><div class="seg-desc">Mild II / III</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('sagittal',3,this)"><div class="seg-value">3</div><div class="seg-desc">Full II / III</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('rotationSeverity',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">&lt;15°</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('rotationSeverity',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">15–30°</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('rotationSeverity',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">&gt;30°</div>
+      </button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-transverse" style="animation-delay:.14s">
+  <div class="param-card" id="pc-incisorPosition" style="animation-delay:.11s">
     <div class="param-header">
-      <span class="param-name">Transverse</span>
+      <span class="param-name">Incisor Position</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('transverse',1,this)"><div class="seg-value">1</div><div class="seg-desc">None</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('transverse',2,this)"><div class="seg-value">2</div><div class="seg-desc">Mild Crossbite</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('transverse',3,this)"><div class="seg-value">3</div><div class="seg-desc">Multiple / Segment</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('incisorPosition',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">Neutral</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('incisorPosition',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">Proclination</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('incisorPosition',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">Retroclination</div>
+      </button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-asymmetry" style="animation-delay:.16s">
+  <!-- GROUP: Sagittal / AP -->
+  <div class="param-group-label">Sagittal</div>
+
+  <div class="param-card" id="pc-molarRelationship" style="animation-delay:.12s">
     <div class="param-header">
-      <span class="param-name">Asymmetry</span>
+      <span class="param-name">Molar Relationship</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('asymmetry',1,this)"><div class="seg-value">1</div><div class="seg-desc">None</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('asymmetry',2,this)"><div class="seg-value">2</div><div class="seg-desc">Mild</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('asymmetry',3,this)"><div class="seg-value">3</div><div class="seg-desc">Significant</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('molarRelationship',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">Mild AP</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('molarRelationship',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">Moderate AP</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('molarRelationship',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">Severe AP</div>
+      </button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-eruption" style="animation-delay:.17s">
+  <!-- GROUP: Vertical -->
+  <div class="param-group-label">Vertical</div>
+
+  <div class="param-card" id="pc-deepBite" style="animation-delay:.13s">
     <div class="param-header">
-      <span class="param-name">Eruption</span>
+      <span class="param-name">Deep Bite</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('eruption',1,this)"><div class="seg-value">1</div><div class="seg-desc">Fully Erupted</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('eruption',2,this)"><div class="seg-value">2</div><div class="seg-desc">Partially Erupted</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('eruption',3,this)"><div class="seg-value">3</div><div class="seg-desc">Impacted</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('deepBite',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">30–50%</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('deepBite',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">50–80%</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('deepBite',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">&gt;80% / Traumatic</div>
+      </button>
     </div>
   </div>
 
-  <div class="param-card" id="pc-compliance" style="animation-delay:.18s">
+  <div class="param-card" id="pc-openBite" style="animation-delay:.14s">
     <div class="param-header">
-      <span class="param-name">Compliance</span>
+      <span class="param-name">Open Bite</span>
     </div>
     <div class="seg-group">
-      <button class="seg-btn" data-val="1" onclick="selectParam('compliance',1,this)"><div class="seg-value">1</div><div class="seg-desc">Good</div></button>
-      <button class="seg-btn" data-val="2" onclick="selectParam('compliance',2,this)"><div class="seg-value">2</div><div class="seg-desc">Average</div></button>
-      <button class="seg-btn" data-val="3" onclick="selectParam('compliance',3,this)"><div class="seg-value">3</div><div class="seg-desc">Poor</div></button>
+      <button class="seg-btn" data-val="1" onclick="selectParam('openBite',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">0–2 mm</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('openBite',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">2–4 mm</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('openBite',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">&gt;4 mm</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- GROUP: Transverse -->
+  <div class="param-group-label">Transverse</div>
+
+  <div class="param-card" id="pc-crossbite" style="animation-delay:.15s">
+    <div class="param-header">
+      <span class="param-name">Crossbite</span>
+    </div>
+    <div class="seg-group">
+      <button class="seg-btn" data-val="1" onclick="selectParam('crossbite',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">None / Minimal</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('crossbite',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">Unilateral</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('crossbite',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">Bilateral / Severe</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- GROUP: Midline -->
+  <div class="param-group-label">Midline</div>
+
+  <div class="param-card" id="pc-midlineDeviation" style="animation-delay:.16s">
+    <div class="param-header">
+      <span class="param-name">Midline Deviation</span>
+    </div>
+    <div class="seg-group">
+      <button class="seg-btn" data-val="1" onclick="selectParam('midlineDeviation',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">≤2 mm</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('midlineDeviation',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">2–4 mm</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('midlineDeviation',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">&gt;4 mm</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- GROUP: Eruption & Compliance -->
+  <div class="param-group-label">Eruption &amp; Compliance</div>
+
+  <div class="param-card" id="pc-eruptionComplexity" style="animation-delay:.17s">
+    <div class="param-header">
+      <span class="param-name">Eruption Complexity</span>
+    </div>
+    <div class="seg-group">
+      <button class="seg-btn" data-val="1" onclick="selectParam('eruptionComplexity',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">Erupted</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('eruptionComplexity',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">Guided Eruption</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('eruptionComplexity',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">Deep Impaction</div>
+      </button>
+    </div>
+  </div>
+
+  <div class="param-card" id="pc-complianceExpectation" style="animation-delay:.18s">
+    <div class="param-header">
+      <span class="param-name">Compliance Expectation</span>
+    </div>
+    <div class="seg-group">
+      <button class="seg-btn" data-val="1" onclick="selectParam('complianceExpectation',1,this)">
+        <div class="seg-value">1</div><div class="seg-desc">Good</div>
+      </button>
+      <button class="seg-btn" data-val="2" onclick="selectParam('complianceExpectation',2,this)">
+        <div class="seg-value">2</div><div class="seg-desc">Average</div>
+      </button>
+      <button class="seg-btn" data-val="3" onclick="selectParam('complianceExpectation',3,this)">
+        <div class="seg-value">3</div><div class="seg-desc">Poor</div>
+      </button>
     </div>
   </div>
 
@@ -202,17 +628,12 @@
     <div>
       <div class="severity-tag" id="sev-tag">Awaiting Score</div>
       <div class="severity-title" id="sev-title">—</div>
-      <div class="severity-desc" id="sev-desc">Complete all 9 parameters to classify</div>
-    </div>
-    <div class="sev-bubble">
-      <div class="sev-score-num" id="sev-score-num">—</div>
-      <div class="sev-score-lbl">Score</div>
+      <div class="severity-desc" id="sev-desc">Complete all 13 parameters to classify</div>
     </div>
   </div>
 
-  <!-- ── Treatment Info ── -->
-  <div id="treatment-info" style="display:none; margin-top:12px; padding:12px; background:var(--surface); border-radius:8px; font-size:13px; line-height:1.6; border-left:3px solid var(--primary);">
-  </div>
+  <!-- ── Patient Output ── -->
+  <div id="patient-output" style="display:none"></div>
 
   <!-- ── Treatment Options ── -->
   <div class="section-label" style="margin-top:4px">
@@ -262,6 +683,9 @@
     </div>
   </div>
 
+  <!-- ── Clinician Output ── -->
+  <div id="clinician-output" style="display:none"></div>
+
 </main><!-- end .main -->
 
 <!-- ═══════════════════════════════════════════
@@ -270,6 +694,7 @@
 <div class="sticky-cta">
   <div class="cta-inner">
     <div class="cta-chip" id="cta-chip">Score: —</div>
+    <button class="cta-btn secondary" onclick="saveCase()" style="margin-right:6px">💾 Save</button>
     <button class="cta-btn" onclick="openSummary()">View Summary →</button>
   </div>
 </div>
@@ -281,9 +706,13 @@
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-header">
-      <span class="modal-title">Case Summary</span>
+      <span class="modal-title">Case Summary · V7.7</span>
+      <span class="save-badge" id="save-badge"></span>
       <div class="modal-close" onclick="closeModal()">✕</div>
     </div>
+
+    <!-- Scrollable content area -->
+    <div class="modal-scroll-content">
 
     <!-- Summary Card — html2canvas captures this element -->
     <div id="summary-card">
@@ -296,7 +725,7 @@
         </div>
         <div class="sc-clinic-info">
           <div class="sc-clinic-name" id="sc-clinic-name">Flosswork Dental Clinic</div>
-          <div class="sc-clinic-tag"  id="sc-clinic-tag">Dentistry redesigned</div>
+          <div class="sc-clinic-tag"  id="sc-clinic-tag">Clearly Better.</div>
         </div>
         <div class="sc-date-txt" id="sc-date"></div>
       </div>
@@ -318,44 +747,46 @@
           <div class="sc-sev-title" id="sc-sev-title">—</div>
           <div class="sc-sev-desc"  id="sc-sev-desc">Complete all parameters to classify</div>
         </div>
-        <div class="sc-sev-bubble">
-          <div class="sc-sev-num" id="sc-sev-num">—</div>
-          <div class="sc-sev-lbl">Score</div>
-        </div>
       </div>
 
-      <!-- Treatment Estimate -->
-      <div id="sc-tx-estimate" style="display:none"></div>
+      <!-- Patient Summary — injected by JS -->
+      <div id="sc-patient-summary" style="display:none"></div>
 
       <!-- Treatment option cards -->
-      <div class="sc-section-lbl">Treatment Options</div>
+      <div class="sc-section-lbl" style="margin-top:12px">Treatment Options</div>
       <div class="sc-tx-grid" id="sc-tx-grid">
         <div class="sc-no-plans" style="grid-column:1/-1">No plans selected</div>
       </div>
 
-      <!-- Selected auxiliaries -->
-      <div class="sc-aux-tags" id="sc-aux-tags" style="display:none"></div>
+      <!-- Phone CTA -->
+      <a class="sc-phone-cta" href="tel:+918354088822">
+        <div class="cta-left">
+          <div class="cta-title">Call Now</div>
+          <div class="cta-sub">+91-8354088822</div>
+        </div>
+        <div class="cta-right">
+          <div class="cta-icon">📞</div>
+        </div>
+      </a>
 
-      <!-- Static phone CTA -->
-      <div class="sc-phone-cta">📞 Call Clinic: +91-8354088822</div>
+      <!-- V7.7 Clinician Report — hidden from share summary -->
+      <div id="sc-tx-estimate" style="display:none"></div>
 
       <div class="sc-disclaimer">⚕️ Final prices and treatment plan may vary after scanning &amp; planning. For reference only.</div>
-      <div class="sc-footer">Flosswork Dental Clinic · AlignerIQ</div>
+      <div class="sc-footer">Flosswork Dental Clinic · AlignerIQ V7.7</div>
 
     </div><!-- end #summary-card -->
 
-    <!-- Modal action buttons -->
-    <div class="modal-actions">
-      <button class="btn-primary" id="btn-share" onclick="downloadPDF()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-             stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
-          <polyline points="16 6 12 2 8 6"/>
-          <line x1="12" y1="2" x2="12" y2="15"/>
-        </svg>
-        Share Summary
-      </button>
-      <button class="btn-secondary" onclick="closeModal()">Close</button>
+    </div><!-- end .modal-scroll-content -->
+
+    <!-- Summary sticky CTA — pinned outside scroll area -->
+    <div class="summary-sticky-cta">
+      <div class="cta-inner">
+        <button class="cta-btn secondary" onclick="closeModal()">Close</button>
+        <button class="cta-btn save-case-btn" id="btn-save-case" onclick="saveCase()">Save</button>
+        <button class="cta-btn whatsapp" onclick="shareWhatsApp()">WhatsApp</button>
+        <button class="cta-btn primary" onclick="downloadPDF()">Share PDF</button>
+      </div>
     </div>
 
   </div><!-- end .modal-sheet -->
@@ -368,5 +799,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+</div><!-- end #app-wrapper -->
 </body>
 </html>
