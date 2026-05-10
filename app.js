@@ -1965,9 +1965,13 @@ async function saveCase() {
     if (S.caseId) {
       const { error } = await sb.from('cases').update(payload).eq('id', S.caseId).eq('user_id', currentUser.id);
       if (error) throw error;
+      const idx = pcData.findIndex(c => c.id === S.caseId);
+      if (idx >= 0) {
+        pcData[idx] = { ...pcData[idx], ...payload, updated_at: new Date().toISOString() };
+      }
       S.caseSaved = true;
       S.lastSyncedAt = new Date().toISOString();
-      console.log('CASE UPDATED', { id: S.caseId, conversion_status: payload.conversion_status });
+      console.log('CASE UPDATED', payload);
       setSaveBadge('✓ Saved', 'saved');
       clearPendingSync();
     } else {
@@ -1976,7 +1980,7 @@ async function saveCase() {
       S.caseSaved = true;
       if (inserted) S.caseId = inserted.id;
       S.lastSyncedAt = new Date().toISOString();
-      console.log('CASE SAVED', { id: inserted.id, conversion_status: payload.conversion_status });
+      console.log('CASE INSERTED', payload);
       setSaveBadge('✓ Saved', 'saved');
       clearPendingSync();
     }
@@ -2241,16 +2245,11 @@ function renderPastCasesList() {
           <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
             <div class="pc-sev-pill ${sevClass}">${c.severity ? c.severity.charAt(0).toUpperCase() + c.severity.slice(1) : '—'}</div>
             ${statusBadge}
+                    ${(c.provider) ? `<div style="margin-top:8px;font-size:11px"><span style="padding:3px 8px;background:var(--surface2);border-radius:4px;color:var(--text-secondary)"> ${c.provider}</span></div>` : ''}
             <button class="pc-share" title="Clinician Report PDF" onclick="shareCasePDF(${cJson}, event)">Clinician</button>
             <button class="pc-delete" title="Delete case" onclick="deleteCase('${c.id}', event)">✕</button>
           </div>
         </div>
-        <div class="pc-scores">
-          <span>MDS <strong>${c.mds_score}</strong></span>
-          <span>Aligners <strong>${c.aligners_min}–${c.aligners_max}</strong></span>
-          <span>Duration <strong>${c.duration_low}–${c.duration_high} mo</strong></span>
-        </div>
-        ${(c.provider) ? `<div style="margin-top:8px;font-size:11px"><span style="padding:3px 8px;background:var(--surface2);border-radius:4px;color:var(--text-secondary)">Provider: ${c.provider}</span></div>` : ''}
       </div>`;
   }).join('');
 }
