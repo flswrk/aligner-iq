@@ -193,30 +193,6 @@ body {
 .btn-reset:hover  { background: var(--bg); color: var(--text-primary); }
 .btn-reset:active { transform: scale(0.97); }
 
-/* ── Conversion status pill row ── */
-.conv-status-row {
-  display: flex; gap: 6px;
-  overflow-x: auto; padding: 6px 18px 8px;
-  scrollbar-width: none; -ms-overflow-style: none;
-}
-.conv-status-row::-webkit-scrollbar { display: none; }
-.conv-pill {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 11px; font-weight: 600;
-  padding: 4px 12px; border-radius: 20px;
-  border: 1px solid var(--border);
-  background: var(--surface2); color: var(--text-secondary);
-  cursor: pointer; white-space: nowrap; flex-shrink: 0;
-  transition: all 0.15s;
-}
-.conv-pill.active                              { color: #fff !important; border-color: transparent !important; }
-.conv-pill.active[data-value="converted"]      { background: #22a25a !important; }
-.conv-pill.active[data-value="budget-issue"]   { background: #d97706 !important; }
-.conv-pill.active[data-value="not-responding"] { background: #dc2626 !important; }
-.conv-pill.active[data-value="in-pipeline"]    { background: #6366f1 !important; }
-.conv-pill.active[data-value="fresh"]          { background: #0891b2 !important; }
-.conv-pill.active[data-value="needs-time"]     { background: #9333ea !important; }
-.conv-pill.active[data-value="declined"]       { background: #6b7280 !important; }
 
 /* ── Past-case status pill ── */
 .pc-status-pill {
@@ -457,16 +433,14 @@ select.field-input { cursor: pointer; }
 }
 
 .aux-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  display: inline;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  padding: 7px 12px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   cursor: default;
   user-select: none;
 }
@@ -474,6 +448,18 @@ select.field-input { cursor: pointer; }
 .aux-pill::before {
   content: "";
   display: none;
+}
+
+/* ── Treatment facilities badge ── */
+.sc-facility-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 /* ─────────────────────────────────────────────
@@ -800,7 +786,7 @@ select.field-input { cursor: pointer; }
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-top: 1px solid var(--border);
-  padding: 11px 18px;
+  padding: 28px 18px 11px;
   padding-bottom: calc(11px + env(safe-area-inset-bottom));
   z-index: 100;
 }
@@ -851,6 +837,7 @@ select.field-input { cursor: pointer; }
   border-radius: var(--radius);
   overflow: hidden;
   padding: 12px;
+  padding-bottom: 24px;
 }
 
 .sc-section-lbl {
@@ -1123,14 +1110,7 @@ select.field-input { cursor: pointer; }
 }
 
 .cta-right {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
+  display: none;
 }
 
 .sc-disclaimer {

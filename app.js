@@ -212,7 +212,10 @@ const S = {
   lastResult:        null,
   caseSaved:         false,
   caseId:            null,    // Supabase row id after save
-  conversionStatus:  'fresh'  // default status for every new case
+  conversionStatus:  'fresh',  // default status for every new case
+  provider:          '',       // 'toothsi' | 'flosswork' | 'off-site' | ''
+  internalNote:      '',       // clinician notes (not shared in summary)
+  lastSyncedAt:      null      // timestamp of last successful sync
 };
 
 const CONVERSION_STATUSES = [
@@ -1376,6 +1379,13 @@ function populateSummaryCard() {
                 ${auxiliaries.map(a => `<span class="sc-aux-tag">${a}</span>`).join('')}
               </div>
             </div>` : ''}
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light)">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">Facilities</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:12px">
+              <span style="padding:4px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px">✓ Easy EMI</span>
+              <span style="padding:4px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px">✓ Free Oral Care Kit</span>
+            </div>
+          </div>
         </div>`;
       scPatientSummary.style.display = 'block';
     } else {
@@ -1393,13 +1403,8 @@ function populateSummaryCard() {
   // Phone CTA
   const phoneCta = document.querySelector('.sc-phone-cta');
   if (phoneCta) {
-    phoneCta.innerHTML = `
-      <div class="cta-left">
-        <div class="cta-title">Call Now</div>
-        <div class="cta-sub">${CONFIG.clinic.phone}</div>
-      </div>
-      <div class="cta-right"><div class="cta-icon">📞</div></div>
-    `;
+    phoneCta.style.justifyContent = 'center';
+    phoneCta.innerHTML = `<div style="text-align:center"><span style="color:#fff;font-size:13px;font-weight:600">Call Now · </span><span style="color:#fff;font-size:16px;font-weight:600">${CONFIG.clinic.phone}</span></div>`;
     phoneCta.href = `tel:${CONFIG.clinic.phone}`;
   }
 }
@@ -1636,13 +1641,15 @@ async function resetAll() {
   S.lastResult       = null;
   S.caseSaved        = false;
   S.caseId           = null;
-  S.conversionStatus = null;
-
-  // Reset status pills to default
   S.conversionStatus = 'fresh';
-  document.querySelectorAll('.conv-pill').forEach(function(p) {
-    p.classList.toggle('active', p.getAttribute('data-value') === 'fresh');
-  });
+  S.provider         = '';
+  S.internalNote     = '';
+
+  // Reset dropdowns
+  const dropdown = document.getElementById('conversion-status-select');
+  if (dropdown) dropdown.value = 'fresh';
+  const providerDropdown = document.getElementById('provider-select');
+  if (providerDropdown) providerDropdown.value = '';
 
   document.querySelectorAll('.save-badge').forEach(b => { b.style.display = 'none'; });
 
@@ -1654,6 +1661,9 @@ async function resetAll() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+
+  const noteEl = document.getElementById('internal-note');
+  if (noteEl) noteEl.value = '';
 
   const logoImg = document.getElementById('clinic-logo-img');
   const logoPh  = document.getElementById('clinic-logo-ph');
@@ -1682,6 +1692,9 @@ function persistState() {
       selectedAux: [...selectedAux],
       plans:       [...S.plans],
       logoDataURL: S.logoDataURL,
+      provider:    S.provider || '',
+      internalNote: document.getElementById('internal-note')?.value || '',
+      conversionStatus: S.conversionStatus || 'fresh',
       patient: {
         name:      document.getElementById('patient-name')?.value || '',
         age:       document.getElementById('patient-age')?.value  || '',
@@ -1754,6 +1767,24 @@ function loadPersistedState() {
       set('patient-sex',       d.patient.sex);
       set('patient-whatsapp',  d.patient.whatsapp);
     }
+
+    // Load provider
+    if (!S.provider) S.provider = d.provider || '';
+    const providerDropdown = document.getElementById('provider-select');
+    if (providerDropdown) providerDropdown.value = S.provider;
+
+    // Load internal note
+    if (!S.internalNote) {
+      const noteEl = document.getElementById('internal-note');
+      if (noteEl) noteEl.value = d.internalNote || '';
+    }
+
+    // Load conversion status (only on initial hydration)
+    if (!S.conversionStatus || S.conversionStatus === 'fresh') {
+      S.conversionStatus = d.conversionStatus || 'fresh';
+      const dropdown = document.getElementById('conversion-status-select');
+      if (dropdown) dropdown.value = S.conversionStatus;
+    }
   } catch (_) { /* corrupted data — silently ignore */ }
 }
 
@@ -1799,6 +1830,7 @@ function showApp() {
   document.getElementById('auth-screen').style.display  = 'none';
   document.getElementById('app-wrapper').style.display  = 'block';
   renderUserChip();
+  subscribeToRealtimeCases();
 }
 
 function renderUserChip() {
@@ -1887,7 +1919,6 @@ async function signOut() {
 async function saveCase() {
   if (!currentUser) return;
   if (!S.lastResult) return;
-  if (S.caseSaved) return; // already saved this result — prevent duplicates
 
   const sb = getSupabase();
   const patientName     = document.getElementById('patient-name')?.value.trim() || '';
@@ -1922,20 +1953,38 @@ async function saveCase() {
     selected_plans:     S.plans,
     params:             Object.fromEntries(PARAMS.map(p => [p, S[p]])),
     explainability:     r.explainability,
-    conversion_status:  S.conversionStatus || null
+    conversion_status:  S.conversionStatus || 'fresh',
+    provider:           S.provider || null,
+    internal_note:      document.getElementById('internal-note')?.value.trim() || null
   };
 
+  console.log('SAVE PAYLOAD', { conversion_status: payload.conversion_status, provider: payload.provider, internal_note: payload.internal_note });
   setSaveBadge('Saving…', 'saving');
 
-  const { data: inserted, error } = await sb.from('cases').insert(payload).select('id').single();
-
-  if (error) {
+  try {
+    if (S.caseId) {
+      const { error } = await sb.from('cases').update(payload).eq('id', S.caseId).eq('user_id', currentUser.id);
+      if (error) throw error;
+      S.caseSaved = true;
+      S.lastSyncedAt = new Date().toISOString();
+      console.log('CASE UPDATED', { id: S.caseId, conversion_status: payload.conversion_status });
+      setSaveBadge('✓ Saved', 'saved');
+      clearPendingSync();
+    } else {
+      const { data: inserted, error } = await sb.from('cases').insert(payload).select('id').single();
+      if (error) throw error;
+      S.caseSaved = true;
+      if (inserted) S.caseId = inserted.id;
+      S.lastSyncedAt = new Date().toISOString();
+      console.log('CASE SAVED', { id: inserted.id, conversion_status: payload.conversion_status });
+      setSaveBadge('✓ Saved', 'saved');
+      clearPendingSync();
+    }
+  } catch (error) {
+    console.error('SAVE ERROR', error);
     setSaveBadge('Save failed', 'error');
+    storePendingSync(payload);
     setTimeout(() => setSaveBadge('Not Saved', 'not-saved'), 3000);
-  } else {
-    S.caseSaved = true;
-    if (inserted) S.caseId = inserted.id;
-    setSaveBadge('✓ Saved', 'saved');
   }
 }
 
@@ -1962,30 +2011,135 @@ function setSaveBadge(text, state) {
   }
 }
 
-function setConversionStatus(value) {
-  // Toggle off if already selected
-  if (S.conversionStatus === value) value = null;
-  S.conversionStatus = value;
+function storePendingSync(payload) {
+  try {
+    const pending = { payload, caseId: S.caseId };
+    localStorage.setItem('pending_case_sync', JSON.stringify(pending));
+    console.log('SYNC QUEUED', { caseId: S.caseId });
+  } catch (_) {}
+}
 
-  // Update pills
-  document.querySelectorAll('.conv-pill').forEach(function(p) {
-    if (p.getAttribute('data-value') === value) {
-      p.classList.add('active');
+function clearPendingSync() {
+  localStorage.removeItem('pending_case_sync');
+}
+
+async function retryPendingSync() {
+  try {
+    const raw = localStorage.getItem('pending_case_sync');
+    if (!raw || !currentUser) return;
+    const { payload, caseId } = JSON.parse(raw);
+    console.log('SYNC RETRY', { caseId });
+
+    const sb = getSupabase();
+    if (caseId) {
+      const { error } = await sb.from('cases').update(payload).eq('id', caseId).eq('user_id', currentUser.id);
+      if (error) throw error;
+      S.caseId = caseId;
     } else {
-      p.classList.remove('active');
+      const { data: inserted, error } = await sb.from('cases').insert(payload).select('id').single();
+      if (error) throw error;
+      if (inserted) S.caseId = inserted.id;
     }
-  });
+    S.lastSyncedAt = new Date().toISOString();
+    clearPendingSync();
+    console.log('SYNC SUCCESS', { id: caseId });
+    setSaveBadge('✓ Synced', 'saved');
+  } catch (error) {
+    console.error('SYNC RETRY FAILED', error);
+  }
+}
+
+function setConversionStatus(value) {
+  S.conversionStatus = value || 'fresh';
+  console.log('SET CONVERSION STATUS', value);
+
+  // Update dropdown
+  const dropdown = document.getElementById('conversion-status-select');
+  if (dropdown) dropdown.value = value || '';
 
   // DB update (non-blocking)
   if (S.caseId && currentUser) {
     getSupabase()
       .from('cases')
-      .update({ conversion_status: value || null })
+      .update({ conversion_status: value || 'fresh' })
       .eq('id', S.caseId)
-      .then(function() {
+      .then(function(res) {
+        console.log('CONVERSION STATUS UPDATED', value);
         var rec = pcData.find(function(c) { return c.id === S.caseId; });
-        if (rec) rec.conversion_status = value || null;
-      });
+        if (rec) rec.conversion_status = value || 'fresh';
+      })
+      .catch(e => console.error('CONVERSION UPDATE ERROR', e));
+  }
+}
+
+function setProvider(value) {
+  S.provider = value || '';
+  console.log('SET PROVIDER', value);
+
+  const dropdown = document.getElementById('provider-select');
+  if (dropdown) dropdown.value = value || '';
+
+  if (S.caseId && currentUser) {
+    getSupabase()
+      .from('cases')
+      .update({ provider: value || null })
+      .eq('id', S.caseId)
+      .then(res => {
+        console.log('PROVIDER UPDATED', value);
+        var rec = pcData.find(c => c.id === S.caseId);
+        if (rec) rec.provider = value || null;
+      })
+      .catch(e => console.error('PROVIDER UPDATE ERROR', e));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   SUPABASE — REALTIME SYNC
+════════════════════════════════════════════════════════ */
+let realtimeChannel = null;
+
+function subscribeToRealtimeCases() {
+  if (!currentUser || realtimeChannel) return;
+  const sb = getSupabase();
+  realtimeChannel = sb
+    .channel('cases_' + currentUser.id)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'cases',
+        filter: 'user_id=eq.' + currentUser.id
+      },
+      handleRealtimeUpdate
+    )
+    .subscribe();
+}
+
+function handleRealtimeUpdate(payload) {
+  if (payload.eventType === 'UPDATE' && payload.new) {
+    const updated = payload.new;
+    const idx = pcData.findIndex(c => c.id === updated.id);
+    if (idx >= 0) {
+      pcData[idx] = { ...pcData[idx], ...updated };
+      if (S.caseId === updated.id && S.lastSyncedAt) {
+        const remoteUpdatedAt = new Date(updated.updated_at).getTime();
+        const localUpdatedAt = new Date(S.lastSyncedAt).getTime();
+        if (remoteUpdatedAt > localUpdatedAt) {
+          console.log('REMOTE UPDATE DETECTED', { caseId: updated.id });
+          renderPastCasesList();
+        } else {
+          console.warn('STALE REMOTE UPDATE BLOCKED', { caseId: updated.id });
+        }
+      }
+    }
+  }
+}
+
+function unsubscribeRealtimeCases() {
+  if (realtimeChannel) {
+    getSupabase().removeChannel(realtimeChannel);
+    realtimeChannel = null;
   }
 }
 
@@ -1995,6 +2149,7 @@ function setConversionStatus(value) {
 let pcData        = [];   // cached past cases
 let pcSortMode    = 'date'; // 'date' | 'name'
 let pcFilterStatus = '';    // '' = all
+let pcSelectedCase = null;  // currently selected case in tags bar
 
 async function openPastCases() {
   const panel = document.getElementById('past-cases-panel');
@@ -2082,10 +2237,10 @@ function renderPastCasesList() {
           <div>
             <div class="pc-name">${c.patient_name || 'Unnamed Patient'}</div>
             <div class="pc-meta">${c.patient_age ? c.patient_age + ' yrs · ' : ''}${c.patient_sex || ''} · ${date}</div>
-            ${statusBadge}
           </div>
           <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
             <div class="pc-sev-pill ${sevClass}">${c.severity ? c.severity.charAt(0).toUpperCase() + c.severity.slice(1) : '—'}</div>
+            ${statusBadge}
             <button class="pc-share" title="Clinician Report PDF" onclick="shareCasePDF(${cJson}, event)">Clinician</button>
             <button class="pc-delete" title="Delete case" onclick="deleteCase('${c.id}', event)">✕</button>
           </div>
@@ -2095,6 +2250,7 @@ function renderPastCasesList() {
           <span>Aligners <strong>${c.aligners_min}–${c.aligners_max}</strong></span>
           <span>Duration <strong>${c.duration_low}–${c.duration_high} mo</strong></span>
         </div>
+        ${(c.provider) ? `<div style="margin-top:8px;font-size:11px"><span style="padding:3px 8px;background:var(--surface2);border-radius:4px;color:var(--text-secondary)">Provider: ${c.provider}</span></div>` : ''}
       </div>`;
   }).join('');
 }
@@ -2258,6 +2414,10 @@ function buildClinicianPDFElement(c, r) {
       row('Night-time wear', retention.nightTime)
     )}
 
+    <a href="tel:${CONFIG.clinic.phone}" style="display:block;margin-top:14px;padding:12px;background:linear-gradient(135deg, #1a1916, #2a2925);border-radius:10px;text-decoration:none;cursor:pointer;text-align:center">
+      <span style="color:#fff;font-size:12px;font-weight:600">Call Now · </span><span style="color:#fff;font-size:16px;font-weight:700">${CONFIG.clinic.phone}</span>
+    </a>
+
     <div style="font-size:9px;color:#aaa;text-align:center;margin-top:8px;padding-top:8px;border-top:1px solid #eee">
       ⚕️ For clinical use only. Final plan may vary after full records. · ${CONFIG.clinic.name} · AlignerIQ
     </div>`;
@@ -2271,6 +2431,7 @@ function buildClinicianPDFElement(c, r) {
 function closePastCases() {
   const panel = document.getElementById('past-cases-panel');
   if (panel) panel.style.display = 'none';
+  pcSelectedCase = null;
   document.body.style.overflow = '';
 }
 
@@ -2316,22 +2477,25 @@ function loadCase(c) {
   setVal('patient-name', c.patient_name);
   setVal('patient-age',  c.patient_age);
   setVal('patient-sex',  c.patient_sex);
+  setVal('patient-whatsapp', c.patient_whatsapp);
+  setVal('internal-note', c.internal_note || '');
 
   // Restore plans
   S.plans = Array.isArray(c.selected_plans) ? [...c.selected_plans] : [];
   renderPlanCards();
 
-  // Restore conversion status
+  // Restore conversion status and provider
   S.caseId           = c.id;
-  S.conversionStatus = c.conversion_status || null;
-  // Restore conversion status pills
-  document.querySelectorAll('.conv-pill').forEach(function(p) {
-    if (p.getAttribute('data-value') === S.conversionStatus) {
-      p.classList.add('active');
-    } else {
-      p.classList.remove('active');
-    }
-  });
+  S.conversionStatus = c.conversion_status || 'fresh';
+  S.provider         = c.provider || '';
+  const dropdown = document.getElementById('conversion-status-select');
+  if (dropdown) dropdown.value = S.conversionStatus;
+  const providerDropdown = document.getElementById('provider-select');
+  if (providerDropdown) providerDropdown.value = S.provider;
+
+  console.log('LOADED CASE', { caseId: c.id, conversion_status: c.conversion_status, provider: c.provider, internal_note: c.internal_note });
+
+  pcSelectedCase = c;
 
   closePastCases();
   recalculate();
@@ -2353,11 +2517,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const mainBadge = document.getElementById('save-badge-main');
   if (mainBadge) { mainBadge.textContent = 'Not Saved'; mainBadge.className = 'save-badge not-saved'; }
 
-  // Activate default Fresh pill
-  document.querySelectorAll('.conv-pill').forEach(function(p) {
-    p.classList.toggle('active', p.getAttribute('data-value') === 'fresh');
-  });
-
   const headerLogo = document.getElementById('clinic-logo-img');
   const headerPh   = document.getElementById('clinic-logo-ph');
   if (headerLogo) {
@@ -2370,11 +2529,14 @@ window.addEventListener('DOMContentLoaded', () => {
   loadPersistedState();
   recalculate();
 
-  ['patient-name', 'patient-age', 'patient-sex', 'patient-whatsapp'].forEach(id => {
+  ['patient-name', 'patient-age', 'patient-sex', 'patient-whatsapp', 'internal-note', 'conversion-status-select'].forEach(id => {
     const el = document.getElementById(id);
     el?.addEventListener('input',  persistState);
     el?.addEventListener('change', persistState);
   });
+
+  // Offline retry
+  window.addEventListener('online', retryPendingSync);
 
   // Boot Supabase auth
   initAuth();
