@@ -2153,6 +2153,7 @@ function unsubscribeRealtimeCases() {
 let pcData        = [];   // cached past cases
 let pcSortMode    = 'date'; // 'date' | 'name'
 let pcFilterStatus = '';    // '' = all
+let pcSearchQuery  = '';    // search by patient name
 let pcSelectedCase = null;  // currently selected case in tags bar
 
 async function openPastCases() {
@@ -2161,10 +2162,13 @@ async function openPastCases() {
   panel.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
-  // Reset filter
+  // Reset filter and search
   pcFilterStatus = '';
+  pcSearchQuery = '';
   const filterSel = document.getElementById('pc-filter-select');
   if (filterSel) filterSel.value = '';
+  const searchInput = document.getElementById('pc-search');
+  if (searchInput) searchInput.value = '';
 
   const list = document.getElementById('past-cases-list');
   list.innerHTML = '<div class="pc-loading">Loading cases…</div>';
@@ -2208,6 +2212,11 @@ function filterPastCases(status) {
   renderPastCasesList();
 }
 
+function searchPastCases(query) {
+  pcSearchQuery = query;
+  renderPastCasesList();
+}
+
 function renderPastCasesList() {
   const list = document.getElementById('past-cases-list');
   if (!list || !pcData.length) return;
@@ -2216,9 +2225,12 @@ function renderPastCasesList() {
   if (pcFilterStatus) {
     filtered = pcData.filter(c => (c.conversion_status || '') === pcFilterStatus);
   }
+  if (pcSearchQuery) {
+    filtered = filtered.filter(c => (c.patient_name || '').toLowerCase().includes(pcSearchQuery.toLowerCase()));
+  }
 
   if (!filtered.length) {
-    list.innerHTML = '<div class="pc-empty">No cases match this filter.</div>';
+    list.innerHTML = '<div class="pc-empty">No cases match.</div>';
     return;
   }
 
@@ -2240,7 +2252,7 @@ function renderPastCasesList() {
         <div class="pc-card-top">
           <div>
             <div class="pc-name">${c.patient_name || 'Unnamed Patient'}</div>
-            <div class="pc-meta">${c.patient_age ? c.patient_age + ' yrs · ' : ''}${c.patient_sex || ''} · ${date}</div>
+            <div class="pc-meta">${c.patient_whatsapp ? c.patient_whatsapp + ' · ' : ''}${date}</div>
           </div>
           <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
             <div class="pc-sev-pill ${sevClass}">${c.severity ? c.severity.charAt(0).toUpperCase() + c.severity.slice(1) : '—'}</div>

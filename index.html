@@ -249,6 +249,7 @@
 <div id="past-cases-panel">
   <div class="pc-header">
     <span class="pc-header-title">Past Cases</span>
+    <input type="text" id="pc-search" placeholder="Search by name…" class="pc-search-input" oninput="searchPastCases(this.value)" style="flex:1;margin:0 10px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px">
     <select class="pc-filter-select" id="pc-filter-select" onchange="filterPastCases(this.value)">
       <option value="">All</option>
       <option value="fresh">Fresh</option>
